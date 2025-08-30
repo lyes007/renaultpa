@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { AdminHeader } from '@/components/admin/admin-header'
 
 export const metadata: Metadata = {
-  title: 'Admin - SPAR (Ste Piéces Auto renault)',
+  title: 'Admin - Zorraga Car Parts',
   description: 'Administration des commandes et gestion du site',
 }
 

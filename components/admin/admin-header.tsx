@@ -13,7 +13,7 @@ export function AdminHeader() {
           <div className="flex items-center gap-3">
             <Package className="h-8 w-8 text-primary" />
             <div>
-              <h1 className="text-xl font-bold">SPAR Admin</h1>
+              <h1 className="text-xl font-bold">Zorraga Admin</h1>
               <p className="text-sm text-muted-foreground">Gestion des commandes</p>
             </div>
           </div>

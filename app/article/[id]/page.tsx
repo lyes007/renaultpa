@@ -1,54 +1,41 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
-import { VehicleSelector } from "@/components/vehicle-selector"
-import ArticleSearch from "@/components/article-search"
 import { ArticleDetails } from "@/components/article-details"
 import { CartDrawer } from "@/components/cart-drawer"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
 
-export default function HomePage() {
-  const [selectedArticleId, setSelectedArticleId] = useState<number | null>(null)
-  const [showArticleDetails, setShowArticleDetails] = useState(false)
-  const [searchQuery, setSearchQuery] = useState<string | null>(null)
-  const searchParams = useSearchParams()
+interface ArticlePageProps {
+  params: {
+    id: string
+  }
+}
 
-  useEffect(() => {
-    // Handle articleId from URL (from navbar search)
-    const articleId = searchParams.get('articleId')
-    const search = searchParams.get('search')
-    
-    if (articleId) {
-      setSelectedArticleId(Number(articleId))
-      setShowArticleDetails(true)
-    } else if (search) {
-      setSearchQuery(search)
-      setShowArticleDetails(false)
-      setSelectedArticleId(null)
-    }
-  }, [searchParams])
+export default function ArticlePage({ params }: ArticlePageProps) {
+  const router = useRouter()
+  const articleId = parseInt(params.id)
 
-  const handleArticleSelect = (articleId: number) => {
-    setSelectedArticleId(articleId)
-    setShowArticleDetails(true)
+  const handleBack = () => {
+    router.back()
   }
 
-  const handleBackToSearch = () => {
-    setShowArticleDetails(false)
-    setSelectedArticleId(null)
-  }
-
-  if (showArticleDetails && selectedArticleId) {
+  if (isNaN(articleId)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
         <Header />
         <main className="container mx-auto px-4 py-6 sm:py-8">
-          <div className="max-w-6xl mx-auto">
-            <ArticleDetails articleId={selectedArticleId} onBack={handleBackToSearch} />
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-2xl font-bold text-destructive mb-4">Article non trouvé</h1>
+            <p className="text-muted-foreground mb-6">L'ID de l'article fourni n'est pas valide.</p>
+            <Button onClick={() => router.push('/')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour à l'accueil
+            </Button>
           </div>
         </main>
-        <CartDrawer />
       </div>
     )
   }
@@ -56,37 +43,22 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <Header />
-
+      
       <main className="container mx-auto px-4 py-6 sm:py-8">
+        {/* Mobile Back Button */}
+        <div className="mb-4 sm:hidden">
+          <Button 
+            variant="ghost" 
+            onClick={handleBack}
+            className="h-12 w-full justify-start bg-background/80 backdrop-blur-sm border border-border/50"
+          >
+            <ArrowLeft className="h-4 w-4 mr-3" />
+            Retour aux articles
+          </Button>
+        </div>
+
         <div className="max-w-6xl mx-auto">
-          <VehicleSelector />
-
-            {searchQuery && (
-              <div className="mt-12">
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-semibold text-foreground mb-2">
-                    Résultats de recherche pour "{searchQuery}"
-                  </h2>
-                  <p className="text-muted-foreground">
-                    Articles trouvés correspondant à votre recherche
-                  </p>
-                </div>
-                <ArticleSearch 
-                  initialSearchQuery={searchQuery}
-                  onArticleSelect={handleArticleSelect}
-                />
-              </div>
-            )}
-
-            {!searchQuery && (
-              <div className="text-center mt-12">
-                <div className="inline-flex items-center gap-2 p-4 bg-muted/50 rounded-lg">
-                  <span className="text-muted-foreground">
-                    Vous pouvez aussi rechercher directement par référence dans la barre de recherche ci-dessus
-                  </span>
-                </div>
-              </div>
-            )}
+          <ArticleDetails articleId={articleId} onBack={handleBack} />
         </div>
       </main>
 
@@ -153,6 +125,7 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+      
       <CartDrawer />
     </div>
   )

@@ -1,4 +1,4 @@
-# SPAR (Ste Piéces Auto renault) - E-commerce Platform
+# Zorraga Car Parts - E-commerce Platform
 
 A professional automotive parts search and e-commerce platform powered by TecDoc database integration.
 
@@ -34,7 +34,7 @@ A professional automotive parts search and e-commerce platform powered by TecDoc
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd spar-auto-parts
+cd zorraga-car-parts
 ```
 
 2. Install dependencies:
