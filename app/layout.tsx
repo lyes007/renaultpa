@@ -11,8 +11,8 @@ import { CartProvider } from "@/hooks/use-cart"
 import { CSSDebug } from "@/components/css-debug"
 
 export const metadata: Metadata = {
-  title: "Zorraga Pièces Auto - Recherche de Pièces Automobiles",
-  description: "Trouvez facilement les pièces automobiles compatibles avec votre véhicule",
+  title: "Ste Piéces Auto renault (SPAR) - Recherche de Pièces Automobiles",
+  description: "Trouvez facilement les pièces automobiles Renault, Dacia et Nissan compatibles avec votre véhicule",
   generator: "v0.app",
 }
 

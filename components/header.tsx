@@ -89,18 +89,18 @@ export function Header() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logoLightMode-1Sdeh2yB5H7GBKFJ7JPAuPpiXrnkdC.png"
-              alt="Zorraga Pièces Auto"
+              src="/LL1.png"
+              alt="SPAR - Ste Piéces Auto renault"
               className="h-10 w-auto sm:h-12 dark:hidden transition-all duration-200"
             />
             <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logozorraga-YGuXTzhMbEM7UVKQ9Accbj2LhtdOlz.png"
-              alt="Zorraga Pièces Auto"
+              src="/DL1.png"
+              alt="SPAR - Ste Piéces Auto renault"
               className="h-10 w-auto sm:h-12 hidden dark:block transition-all duration-200"
             />
             <div className="hidden sm:block">
-              <h1 className="text-lg font-semibold text-primary">Pièces Auto</h1>
-              <p className="text-xs text-muted-foreground">Recherche professionnelle</p>
+              <h1 className="text-lg font-semibold text-primary">SPAR</h1>
+              <p className="text-xs text-muted-foreground">Ste Piéces Auto renault</p>
             </div>
           </div>
 
