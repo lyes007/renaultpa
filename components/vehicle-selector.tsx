@@ -7,6 +7,7 @@ import { Loader2, Car, Calendar, Fuel, Cog, CheckCircle } from "lucide-react"
 import { getManufacturers, getModels, getVehicles } from "@/lib/apify-api"
 import { searchCarImages } from "@/lib/wikimedia-api"
 import { getManufacturerLogo } from "@/lib/car-logos"
+import { useCountry } from "@/contexts/country-context"
 import { HierarchicalCategories } from "./hierarchical-categories"
 import { ModernArticlesList } from "./modern-articles-list"
 import { ArticleDetails } from "./article-details"
@@ -37,6 +38,7 @@ interface Vehicle {
 }
 
 export function VehicleSelector() {
+  const { selectedCountry } = useCountry()
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
   const [models, setModels] = useState<Model[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -61,13 +63,13 @@ export function VehicleSelector() {
 
   useEffect(() => {
     loadManufacturers()
-  }, [])
+  }, [selectedCountry.id])
 
   const loadManufacturers = async () => {
     try {
       setLoadingManufacturers(true)
       setError(null)
-      const response = await getManufacturers()
+      const response = await getManufacturers(selectedCountry.id)
 
       if (response.error) {
         setError(response.error)
@@ -98,7 +100,7 @@ export function VehicleSelector() {
     try {
       setLoadingModels(true)
       setError(null)
-      const response = await getModels(manufacturerId)
+      const response = await getModels(manufacturerId, selectedCountry.id)
 
       if (response.error) {
         setError(response.error)
@@ -120,7 +122,7 @@ export function VehicleSelector() {
     try {
       setLoadingVehicles(true)
       setError(null)
-      const response = await getVehicles(manufacturerId, modelId)
+      const response = await getVehicles(manufacturerId, modelId, selectedCountry.id)
 
       if (response.error) {
         setError(response.error)

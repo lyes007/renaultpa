@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Package, Loader2, Eye, Plus } from "lucide-react"
 import { searchArticlesByNumber } from "@/lib/apify-api"
 import { useCart } from "@/hooks/use-cart"
+import { useCountry } from "@/contexts/country-context"
 import { RobustProductImage } from "@/components/ui/robust-product-image"
 
 interface SearchResult {
@@ -37,6 +38,7 @@ interface ArticleSearchProps {
 }
 
 export default function ArticleSearch({ onArticleSelect, initialSearchQuery = "" }: ArticleSearchProps) {
+  const { selectedCountry } = useCountry()
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -62,7 +64,7 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
 
     try {
       console.log("[v0] Searching for article:", query)
-      const response = await searchArticlesByNumber(query.trim())
+      const response = await searchArticlesByNumber(query.trim(), selectedCountry.id)
 
       if (response.error) {
         console.error("[v0] Search error:", response.error)

@@ -52,83 +52,83 @@ async function callApifyActor<T>(input: any): Promise<ApiResponse<T>> {
 }
 
 // API Functions for each endpoint
-export async function getManufacturers() {
+export async function getManufacturers(countryId: number = 253) {
   return callApifyActor({
     selectPageType: "get-manufacturers-by-type-id-lang-id-country-id",
     typeId: 1,
     langId: 6,
-    countryId: 6,
+    countryId,
   })
 }
 
-export async function getModels(manufacturerId: number) {
+export async function getModels(manufacturerId: number, countryId: number = 253) {
   return callApifyActor({
     selectPageType: "get-models",
     typeId: 1,
     langId: 6,
-    countryId: 6,
+    countryId,
     manufacturerId,
   })
 }
 
-export async function getVehicles(manufacturerId: number, modelId: number) {
+export async function getVehicles(manufacturerId: number, modelId: number, countryId: number = 253) {
   return callApifyActor({
     selectPageType: "get-all-vehicle-engine-types",
     typeId: 1,
     langId: 6,
-    countryId: 6,
+    countryId,
     manufacturerId,
     modelId,
   })
 }
 
-export async function getCategories(manufacturerId: number, vehicleId: number, version: "v1" | "v2" | "v3" = "v1") {
+export async function getCategories(manufacturerId: number, vehicleId: number, countryId: number = 253, version: "v1" | "v2" | "v3" = "v1") {
   return callApifyActor({
     selectPageType: `get-categories-${version}`,
     typeId: 1,
     langId: 6,
-    countryId: 6,
+    countryId,
     manufacturerId,
     vehicleId,
   })
 }
 
-export async function getArticles(manufacturerId: number, vehicleId: number, productGroupId: number) {
+export async function getArticles(manufacturerId: number, vehicleId: number, productGroupId: number, countryId: number = 253) {
   return callApifyActor({
     selectPageType: "get-article-list",
     typeId: 1,
     langId: 6,
-    countryId: 6,
+    countryId,
     manufacturerId,
     vehicleId,
     productGroupId,
   })
 }
 
-export async function getArticleDetails(articleId: number) {
+export async function getArticleDetails(articleId: number, countryId: number = 253) {
   return callApifyActor({
     selectPageType: "get-article-details-by-article-id",
     langId: 6,
-    countryId: 6,
+    countryId,
     articleId,
   })
 }
 
-export async function searchArticlesByNumber(articleNo: string) {
+export async function searchArticlesByNumber(articleNo: string, countryId: number = 253) {
   return callApifyActor({
     selectPageType: "search-articles-by-article-number",
     articleNo,
     langId: 4,
-    countryId: 62,
+    countryId,
   })
 }
 
-export async function searchArticlesByNumberAndSupplier(articleNo: string, supplierId: number) {
+export async function searchArticlesByNumberAndSupplier(articleNo: string, supplierId: number, countryId: number = 253) {
   return callApifyActor({
     selectPageType: "search-articles-by-article-number-and-supplier",
     articleNo,
     supplierId,
     langId: 4,
-    countryId: 62,
+    countryId,
   })
 }

@@ -9,6 +9,7 @@ import "./output.css"
 
 import { ThemeProvider } from "@/components/theme-provider"
 import { CartProvider } from "@/hooks/use-cart"
+import { CountryProvider } from "@/contexts/country-context"
 
 export const metadata: Metadata = {
   title: "SPAR - Ste Pièces Auto Renault - Recherche de Pièces Automobiles",
@@ -25,9 +26,11 @@ export default function RootLayout({
     <html lang="fr" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className={GeistSans.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <CartProvider>
-            {children}
-          </CartProvider>
+          <CountryProvider>
+            <CartProvider>
+              {children}
+            </CartProvider>
+          </CountryProvider>
         </ThemeProvider>
       </body>
     </html>

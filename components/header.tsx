@@ -24,8 +24,12 @@ import { useState, useRef, useEffect } from "react"
 import { useCart } from "@/hooks/use-cart"
 import { searchArticlesByNumber } from "@/lib/apify-api"
 import { useRouter } from "next/navigation"
+import { useCountry } from "@/contexts/country-context"
+import { CountrySelector } from "@/components/country-selector"
+import { RobustProductImage } from "@/components/ui/robust-product-image"
 
 export function Header() {
+  const { selectedCountry } = useCountry()
   const { theme, setTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -78,7 +82,7 @@ export function Header() {
     saveToHistory(searchTerm)
     
     try {
-      const response = await searchArticlesByNumber(searchTerm)
+      const response = await searchArticlesByNumber(searchTerm, selectedCountry.id)
       if (response.error) {
         setSearchResults([])
       } else {
@@ -369,17 +373,19 @@ export function Header() {
                           style={{ animationDelay: `${index * 50}ms` }}
                         >
                           <div className="w-12 h-12 bg-gradient-to-br from-muted/30 to-muted/10 rounded-lg flex-shrink-0 overflow-hidden">
-                            {article.imageLink ? (
-                              <img
-                                src={article.imageLink}
-                                alt={article.articleProductName}
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Search className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                            )}
+                            <RobustProductImage
+                              s3ImageLink={article.s3image && article.s3image.includes('fsn1.your-objectstorage.com') ? article.s3image : undefined}
+                              imageLink={undefined}
+                              imageMedia={undefined}
+                              alt={article.articleProductName}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+                              showDebug={false}
+                              fallbackContent={
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Search className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                              }
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold truncate text-foreground group-hover:text-primary transition-colors">
@@ -599,6 +605,19 @@ export function Header() {
                   </Button>
                 </div>
 
+                {/* Country Selector */}
+                <div className="space-y-3 pt-4 border-t border-border/30">
+                  <h3 className="text-sm font-semibold text-foreground">Region Settings</h3>
+                  <CountrySelector 
+                    variant="outline" 
+                    size="default"
+                    className="w-full h-12 rounded-xl justify-start"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Select your country to filter compatible parts and regional availability.
+                  </p>
+                </div>
+
                 {/* Contact Info */}
                 <div className="space-y-3 pt-4 border-t border-border/30">
                   <h3 className="text-sm font-semibold text-foreground">Contact</h3>
@@ -743,17 +762,19 @@ export function Header() {
                       }}
                     >
                       <div className="w-12 h-12 bg-muted/30 rounded-lg flex-shrink-0 overflow-hidden">
-                        {article.imageLink ? (
-                          <img
-                            src={article.imageLink}
-                            alt={article.articleProductName}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Search className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                        )}
+                        <RobustProductImage
+                          s3ImageLink={article.s3image && article.s3image.includes('fsn1.your-objectstorage.com') ? article.s3image : undefined}
+                          imageLink={undefined}
+                          imageMedia={undefined}
+                          alt={article.articleProductName}
+                          className="w-full h-full object-cover"
+                          showDebug={false}
+                          fallbackContent={
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Search className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                          }
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{article.articleProductName}</p>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCart } from "@/hooks/use-cart"
+import { useCountry } from "@/contexts/country-context"
 import { RobustProductImage } from "@/components/ui/robust-product-image"
 import { 
   ArrowLeft, 
@@ -79,6 +80,7 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
   const [activeTab, setActiveTab] = useState("overview")
   
   const { addItem } = useCart()
+  const { selectedCountry } = useCountry()
 
   // Build S3-only image gallery
   const images = useMemo(() => {
@@ -158,39 +160,39 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
       setLoading(true)
       setError(null)
 
-      // Fetch article details, specifications, and media in parallel
-      const [detailsResponse, specsResponse, mediaResponse] = await Promise.all([
-        fetch('/api/apify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            selectPageType: 'get-article-details-by-article-id',
-            langId: 6,
-            countryId: 6,
-            articleId: articleId
+              // Fetch article details, specifications, and media in parallel
+        const [detailsResponse, specsResponse, mediaResponse] = await Promise.all([
+          fetch('/api/apify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              selectPageType: 'get-article-details-by-article-id',
+              langId: 6,
+              countryId: selectedCountry.id,
+              articleId: articleId
+            })
+          }),
+          fetch('/api/apify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              selectPageType: 'get-article-specification-details-by-article-id',
+              langId: 6,
+              countryId: selectedCountry.id,
+              articleId: articleId
+            })
+          }),
+          fetch('/api/apify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              selectPageType: 'get-article-all-media',
+              langId: 6,
+              countryId: selectedCountry.id,
+              articleId: articleId
+            })
           })
-        }),
-        fetch('/api/apify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            selectPageType: 'get-article-specification-details-by-article-id',
-            langId: 6,
-            countryId: 6,
-            articleId: articleId
-          })
-        }),
-        fetch('/api/apify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            selectPageType: 'get-article-all-media',
-            langId: 6,
-            countryId: 6,
-            articleId: articleId
-          })
-        })
-      ])
+        ])
 
       if (!detailsResponse.ok) {
         throw new Error('Failed to fetch article details')

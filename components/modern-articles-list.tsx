@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { getArticles } from "@/lib/apify-api"
 import { useCart } from "@/hooks/use-cart"
+import { useCountry } from "@/contexts/country-context"
 import { RobustProductImage } from "@/components/ui/robust-product-image"
 
 interface Article {
@@ -60,6 +61,7 @@ export function ModernArticlesList({
   categoryName,
   onArticleSelect,
 }: ModernArticlesListProps) {
+  const { selectedCountry } = useCountry()
   const [articles, setArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -74,7 +76,7 @@ export function ModernArticlesList({
 
   useEffect(() => {
     loadArticles()
-  }, [manufacturerId, vehicleId, productGroupId])
+  }, [manufacturerId, vehicleId, productGroupId, selectedCountry.id])
 
   useEffect(() => {
     setCurrentPage(1) // Reset page when filters change
@@ -85,7 +87,7 @@ export function ModernArticlesList({
       setLoading(true)
       setError(null)
 
-      const response = await getArticles(manufacturerId, vehicleId, Number.parseInt(productGroupId))
+      const response = await getArticles(manufacturerId, vehicleId, Number.parseInt(productGroupId), selectedCountry.id)
 
       if (response.error) {
         setError(response.error)

@@ -73,11 +73,11 @@ export function CartDrawer() {
                         {/* Image */}
                         <div className="w-16 h-16 bg-muted rounded-md flex-shrink-0 overflow-hidden">
                           <RobustProductImage
-                            s3ImageLink={item.image}
-                            imageLink={item.image}
-                            imageMedia={item.image}
+                            s3ImageLink={item.image && item.image.includes('fsn1.your-objectstorage.com') ? item.image : undefined}
+                            imageLink={undefined}
+                            imageMedia={undefined}
                             alt={item.name}
-                            className="w-full h-full"
+                            className="w-full h-full object-cover"
                             size="md"
                             showDebug={false}
                           />

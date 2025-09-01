@@ -17,6 +17,7 @@ import {
   ImageIcon
 } from "lucide-react"
 import { getCategories } from "@/lib/apify-api"
+import { useCountry } from "@/contexts/country-context"
 
 // Category image mapping function
 const getCategoryImage = (categoryName: string): string | null => {
@@ -144,6 +145,7 @@ interface HierarchicalCategoriesProps {
 }
 
 export function HierarchicalCategories({ manufacturerId, vehicleId, onCategorySelect }: HierarchicalCategoriesProps) {
+  const { selectedCountry } = useCountry()
   const [categories, setCategories] = useState<Category[]>([])
   const [categoryTree, setCategoryTree] = useState<TreeNode[]>([])
   const [currentPath, setCurrentPath] = useState<TreeNode[]>([])
@@ -156,7 +158,7 @@ export function HierarchicalCategories({ manufacturerId, vehicleId, onCategorySe
 
   useEffect(() => {
     loadCategories()
-  }, [manufacturerId, vehicleId])
+  }, [manufacturerId, vehicleId, selectedCountry.id])
 
   useEffect(() => {
     if (categories.length > 0) {
@@ -177,7 +179,7 @@ export function HierarchicalCategories({ manufacturerId, vehicleId, onCategorySe
 
       // Try different API versions
       for (const version of ["v1", "v2", "v3"]) {
-        const response = await getCategories(manufacturerId, vehicleId, version)
+        const response = await getCategories(manufacturerId, vehicleId, selectedCountry.id, version)
         
         if (!response.error && (response.data as any)?.[0]?.categories) {
           if (version === "v1") {
@@ -663,23 +665,14 @@ export function HierarchicalCategories({ manufacturerId, vehicleId, onCategorySe
                           
                           <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                           
-                          <div className="absolute top-2 right-2">
-                            <Badge variant="secondary" className="text-xs bg-background/90 backdrop-blur-sm">
-                              {node.children.length}
-                            </Badge>
-                          </div>
+
                         </div>
                         
                                                  <div className="p-2 sm:p-3 flex-1">
                            <div className="font-semibold text-xs sm:text-sm mb-1 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
                              {node.text}
                            </div>
-                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                             <Layers className="h-2 w-2 sm:h-3 sm:w-3 flex-shrink-0" />
-                             <span className="truncate text-xs">
-                               {node.children.length}
-                             </span>
-                           </div>
+
                          </div>
                       </div>
                     </Button>
@@ -712,7 +705,7 @@ export function HierarchicalCategories({ manufacturerId, vehicleId, onCategorySe
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Layers className="h-3 w-3" />
                           {node.children.length > 0 ? (
-                            <span>{node.children.length} sous-catégorie{node.children.length > 1 ? 's' : ''}</span>
+                            <span>Sous-catégories disponibles</span>
                           ) : (
                             <span>Catégorie finale</span>
                           )}
