@@ -148,7 +148,7 @@ export default function HomePage() {
       <footer className="border-t bg-muted/30">
         <div className="container mx-auto px-4 py-6">
           <div className="text-center text-sm text-muted-foreground">
-            <p>© 2024 Zorraga Pièces Auto - Recherche professionnelle de pièces automobiles</p>
+            <p>© 2024 SPAR - Ste Pièces Auto Renault - Recherche professionnelle de pièces automobiles</p>
             <p className="mt-1">Propulsé par la base de données TecDoc</p>
           </div>
         </div>

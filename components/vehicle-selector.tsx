@@ -78,7 +78,14 @@ export function VehicleSelector() {
       console.log("[v0] Full response:", response)
       console.log("[v0] Response data:", response.data)
       console.log("[v0] Extracted manufacturers:", manufacturersData)
-      setManufacturers(manufacturersData)
+      
+      // Filter to only show Renault, Dacia, and Nissan
+      const allowedBrands = ['RENAULT', 'DACIA', 'NISSAN']
+      const filteredManufacturers = manufacturersData.filter((manufacturer: Manufacturer) => 
+        allowedBrands.includes(manufacturer.brand.toUpperCase())
+      )
+      console.log("[v0] Filtered manufacturers:", filteredManufacturers)
+      setManufacturers(filteredManufacturers)
     } catch (err) {
       setError("Erreur lors du chargement des marques")
       console.error("Error loading manufacturers:", err)

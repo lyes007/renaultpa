@@ -204,7 +204,7 @@ export function Header() {
             </div>
             <div className="flex items-center gap-2">
               <Mail className="h-3 w-3" />
-              <span>contact@zorraga-auto.tn</span>
+              <span>contact@spar-auto.tn</span>
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="h-3 w-3" />
@@ -229,24 +229,50 @@ export function Header() {
             className="flex items-center space-x-3 cursor-pointer group"
             onClick={() => router.push('/')}
           >
-            <div className="relative">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logoLightMode-1Sdeh2yB5H7GBKFJ7JPAuPpiXrnkdC.png"
-                alt="Zorraga Pièces Auto"
-                className="h-10 w-auto sm:h-12 lg:h-14 dark:hidden transition-all duration-300 group-hover:scale-105"
-              />
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logozorraga-YGuXTzhMbEM7UVKQ9Accbj2LhtdOlz.png"
-                alt="Zorraga Pièces Auto"
-                className="h-10 w-auto sm:h-12 lg:h-14 hidden dark:block transition-all duration-300 group-hover:scale-105"
-              />
+            <div className="flex items-center gap-1">
+              {/* Light mode logos */}
+              <div className="flex items-center gap-1 dark:hidden">
+                <img
+                  src="/LL1.png"
+                  alt="SPAR Logo 1"
+                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
+                />
+                <img
+                  src="/LL2.png"
+                  alt="SPAR Logo 2"
+                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
+                />
+                <img
+                  src="/LL3.png"
+                  alt="SPAR Logo 3"
+                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
+                />
+              </div>
+              {/* Dark mode logos */}
+              <div className="hidden dark:flex items-center gap-1">
+                <img
+                  src="/DL1.png"
+                  alt="SPAR Logo 1"
+                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
+                />
+                <img
+                  src="/DL2.png"
+                  alt="SPAR Logo 2"
+                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
+                />
+                <img
+                  src="/DL3.png"
+                  alt="SPAR Logo 3"
+                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
+                />
+              </div>
             </div>
             <div className="hidden sm:block">
               <h1 className="text-lg lg:text-xl font-bold text-primary group-hover:text-primary/80 transition-colors">
-                Zorraga Auto
+                SPAR
               </h1>
               <p className="text-xs lg:text-sm text-muted-foreground">
-                Pièces automobiles professionnelles
+                Ste Pièces Auto Renault
               </p>
             </div>
           </div>
@@ -530,11 +556,11 @@ export function Header() {
             <div className="bg-gradient-to-b from-background to-muted/20 border-t border-border/30 mx-4 rounded-b-xl">
               <div className="p-6 space-y-6">
                 {/* Brand info */}
-                <div className="text-center space-y-2">
-                  <h2 className="text-xl font-bold text-primary">Zorraga Auto</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Votre partenaire en pièces automobiles
-                  </p>
+                                 <div className="text-center space-y-2">
+                   <h2 className="text-xl font-bold text-primary">SPAR</h2>
+                   <p className="text-sm text-muted-foreground">
+                     Ste Pièces Auto Renault
+                   </p>
                   <div className="flex justify-center gap-4 mt-4">
                     <Badge variant="secondary" className="text-xs">
                       <Zap className="h-3 w-3 mr-1" />
@@ -581,10 +607,10 @@ export function Header() {
                       <Phone className="h-4 w-4 text-primary" />
                       <span>+216 XX XXX XXX</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-4 w-4 text-primary" />
-                      <span>contact@zorraga-auto.tn</span>
-                    </div>
+                                         <div className="flex items-center gap-3">
+                       <Mail className="h-4 w-4 text-primary" />
+                       <span>contact@spar-auto.tn</span>
+                     </div>
                     <div className="flex items-center gap-3">
                       <MapPin className="h-4 w-4 text-primary" />
                       <span>Tunis, Tunisie</span>
