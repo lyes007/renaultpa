@@ -37,7 +37,7 @@ interface Article {
   articleMediaFileName: string
   imageLink: string
   imageMedia: string
-  s3ImageLink: string
+  s3image: string
 }
 
 interface ModernArticlesListProps {
@@ -169,7 +169,7 @@ export function ModernArticlesList({
       name: article.articleProductName,
       price: 29.99,
       quantity: 1,
-      image: article.imageLink || article.imageMedia || article.s3ImageLink || '',
+      image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
       supplier: article.supplierName,
       articleNo: article.articleNo,
     })
@@ -425,9 +425,9 @@ export function ModernArticlesList({
                     viewMode === 'list' ? 'w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0' : 'aspect-square min-h-[200px] sm:min-h-[240px]'
                   }`}>
                     <RobustProductImage
-                      s3ImageLink={article.s3ImageLink}
-                      imageLink={article.imageLink}
-                      imageMedia={article.imageMedia}
+                      s3ImageLink={article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : undefined}
+                      imageLink={undefined}
+                      imageMedia={undefined}
                       alt={article.articleProductName}
                       className="w-full h-full transition-transform duration-300 hover:scale-110"
                       size="xl"

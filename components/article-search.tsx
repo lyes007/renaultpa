@@ -22,7 +22,7 @@ interface SearchResult {
   articleMediaFileName: string
   imageLink: string
   imageMedia: string
-  s3ImageLink: string
+  s3image: string
 }
 
 interface SearchResponse {
@@ -79,9 +79,17 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
         }
 
         if (searchData?.articles) {
+          console.log("[ArticleSearch] Raw search results:", searchData.articles)
+          console.log("[ArticleSearch] First article image fields:", searchData.articles[0] ? {
+            s3image: searchData.articles[0].s3image,
+            imageLink: searchData.articles[0].imageLink,
+            imageMedia: searchData.articles[0].imageMedia,
+            articleMediaFileName: searchData.articles[0].articleMediaFileName
+          } : 'No articles')
+          
           setSearchResults(searchData.articles)
           setResultCount(searchData.countArticles || searchData.articles.length)
-          console.log("[v0] Found articles:", searchData.articles.length)
+          console.log("[ArticleSearch] Found articles:", searchData.articles.length)
         } else {
           setSearchResults([])
           setResultCount(0)
@@ -113,7 +121,7 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
       name: article.articleProductName,
       price: 29.99, // Mock price for all articles
       quantity: 1,
-              image: article.imageLink || article.imageMedia || article.s3ImageLink || '',
+              image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
       supplier: article.supplierName,
       articleNo: article.articleNo,
     })
@@ -181,9 +189,9 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
                     <div className="space-y-3">
                       <div className="aspect-square bg-muted rounded-lg overflow-hidden">
                         <RobustProductImage
-                          s3ImageLink={article.s3ImageLink}
-                          imageLink={article.imageLink}
-                          imageMedia={article.imageMedia}
+                          s3ImageLink={article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : undefined}
+                          imageLink={undefined}
+                          imageMedia={undefined}
                           alt={article.articleProductName}
                           className="w-full h-full"
                           size="xl"

@@ -41,14 +41,16 @@ interface ArticleData {
   supplierId: number
   imageLink?: string
   imageMedia?: string
+  s3image?: string
   s3ImageLink?: string
   allMedia?: Array<{
     articleMediaType: string
-  articleMediaFileName: string
+    articleMediaFileName: string
     supplierId: number
     mediaInformation: string
-  imageLink: string
-  imageMedia: string
+    imageLink: string
+    imageMedia: string
+    s3image?: string
   }>
   allSpecifications?: Array<{
     specificationName: string
@@ -78,26 +80,73 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
   
   const { addItem } = useCart()
 
-  // Build comprehensive image gallery from all available sources
+  // Build S3-only image gallery
   const images = useMemo(() => {
     if (!article) return []
     
-    const imageSet = new Set<string>()
+    console.log(`[ArticleDetails] Building S3-only image gallery for article ${article.articleId}`)
+    console.log(`[ArticleDetails] Primary image fields:`, {
+      s3image: article.s3image,
+      s3ImageLink: article.s3ImageLink,
+      imageLink: article.imageLink,
+      imageMedia: article.imageMedia
+    })
     
-    // Add primary images first
-    if (article.imageLink) imageSet.add(article.imageLink)
-    if (article.imageMedia) imageSet.add(article.imageMedia)
-    if (article.s3ImageLink) imageSet.add(article.s3ImageLink)
+    const s3ImageUrls: string[] = []
     
-    // Add all media images
+    // Helper function to check if URL is S3 image (not PDF)
+    const isS3ImageUrl = (url: string) => {
+      if (!url) return false
+      const lowercaseUrl = url.toLowerCase()
+      const isS3 = lowercaseUrl.includes('fsn1.your-objectstorage.com')
+      const isImage = lowercaseUrl.includes('.webp') || 
+                     lowercaseUrl.includes('.jpg') || 
+                     lowercaseUrl.includes('.jpeg') || 
+                     lowercaseUrl.includes('.png') || 
+                     lowercaseUrl.includes('.gif') ||
+                     (lowercaseUrl.includes('/images/') && !lowercaseUrl.includes('.pdf'))
+      return isS3 && isImage
+    }
+    
+    // First, collect all s3image URLs from media (these are the best quality)
     if (article.allMedia && article.allMedia.length > 0) {
-      article.allMedia.forEach(media => {
-        if (media.imageLink) imageSet.add(media.imageLink)
-        if (media.imageMedia) imageSet.add(media.imageMedia)
+      console.log(`[ArticleDetails] Processing ${article.allMedia.length} media items for S3 images`)
+      article.allMedia.forEach((media, index) => {
+        console.log(`[ArticleDetails] Media ${index}:`, {
+          s3image: media.s3image,
+          imageLink: media.imageLink,
+          imageMedia: media.imageMedia,
+          fileName: media.articleMediaFileName,
+          mediaType: media.articleMediaType
+        })
+        
+        // Only add S3 image URLs that are actual images
+        if (media.s3image && isS3ImageUrl(media.s3image)) {
+          console.log(`[ArticleDetails] ✅ Adding S3 media image:`, media.s3image)
+          s3ImageUrls.push(media.s3image)
+        }
       })
     }
     
-    return Array.from(imageSet)
+    // Add primary S3 images only
+    if (article.s3image && isS3ImageUrl(article.s3image)) {
+      console.log(`[ArticleDetails] ✅ Adding primary s3image:`, article.s3image)
+      s3ImageUrls.unshift(article.s3image) // Add to beginning
+    }
+    if (article.s3ImageLink && isS3ImageUrl(article.s3ImageLink)) {
+      console.log(`[ArticleDetails] ✅ Adding primary s3ImageLink:`, article.s3ImageLink)
+      s3ImageUrls.push(article.s3ImageLink)
+    }
+    
+    // Remove duplicates while preserving order
+    const uniqueS3Images = Array.from(new Set(s3ImageUrls))
+    console.log(`[ArticleDetails] Final S3-only image gallery (${uniqueS3Images.length} images):`, uniqueS3Images)
+    
+    if (uniqueS3Images.length === 0) {
+      console.warn(`[ArticleDetails] ⚠️ No S3 images found for article ${article.articleId}`)
+    }
+    
+    return uniqueS3Images
   }, [article])
 
   useEffect(() => {
@@ -162,8 +211,8 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
         if (mediaData && mediaData.length > 0) {
           // If it's an array of media objects
           if (Array.isArray(mediaData)) {
-            allMedia = mediaData.filter(media => media.imageLink || media.imageMedia)
-          } else if (mediaData[0] && (mediaData[0].imageLink || mediaData[0].imageMedia)) {
+            allMedia = mediaData.filter(media => media.s3image || media.imageLink || media.imageMedia)
+          } else if (mediaData[0] && (mediaData[0].s3image || mediaData[0].imageLink || mediaData[0].imageMedia)) {
             // Single media object
             allMedia = [mediaData[0]]
           }
@@ -171,8 +220,13 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
 
 
 
+        console.log(`[ArticleDetails] Raw article data from API:`, articleDetails)
+        console.log(`[ArticleDetails] Processed media data:`, allMedia)
+        
         setArticle({
           ...articleDetails,
+          // Ensure s3image field is properly mapped from API response
+          s3image: articleDetails.s3image,
           allMedia: allMedia,
           allSpecifications: specifications?.articleAllSpecifications || [],
           eanNo: specifications?.articleEanNo || null,
@@ -197,7 +251,7 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
       name: article.articleProductName,
       price: 29.99, // Mock price
       quantity: quantity,
-      image: article.imageLink || article.imageMedia || article.s3ImageLink || '',
+             image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
       supplier: article.supplierName,
       articleNo: article.articleNo,
     })
@@ -292,23 +346,25 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
         <div className="space-y-4">
           {/* Main Image */}
           <div className="relative mobile-gallery-main bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl overflow-hidden aspect-square product-image-hover">
-            {images.length > 0 ? (
-              <RobustProductImage
-                s3ImageLink={images[selectedImage]}
-                imageLink={images[selectedImage]}
-                imageMedia={images[selectedImage]}
-                alt={article.articleProductName}
-                className="w-full h-full object-contain transition-all duration-300"
-              />
-            ) : (
-              <RobustProductImage
-                s3ImageLink={article.s3ImageLink}
-                imageLink={article.imageLink}
-                imageMedia={article.imageMedia}
-                alt={article.articleProductName}
-                className="w-full h-full object-contain"
-              />
-            )}
+                         {images.length > 0 ? (
+               <RobustProductImage
+                 s3ImageLink={images[selectedImage]}
+                 imageLink={undefined}
+                 imageMedia={undefined}
+                 alt={article.articleProductName}
+                 className="w-full h-full object-contain transition-all duration-300"
+                 showDebug={true}
+               />
+             ) : (
+               <RobustProductImage
+                 s3ImageLink={article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : undefined}
+                 imageLink={undefined}
+                 imageMedia={undefined}
+                 alt={article.articleProductName}
+                 className="w-full h-full object-contain"
+                 showDebug={true}
+               />
+             )}
             
             {/* Image overlay actions */}
             <div className="absolute top-4 right-4 flex gap-2">
@@ -385,13 +441,13 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                           : 'border-border hover:border-primary/50'
                       }`}
                     >
-                      <RobustProductImage
-                        s3ImageLink={image}
-                        imageLink={image}
-                        imageMedia={image}
-                        alt={`${article.articleProductName} ${index + 1}`}
-                        className="w-full h-full object-contain"
-                      />
+                                             <RobustProductImage
+                         s3ImageLink={image}
+                         imageLink={undefined}
+                         imageMedia={undefined}
+                         alt={`${article.articleProductName} ${index + 1}`}
+                         className="w-full h-full object-contain"
+                       />
                     </button>
                   ))}
                 </div>
@@ -408,13 +464,13 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                           : 'border-border hover:border-primary/50'
                       }`}
                     >
-                      <RobustProductImage
-                        s3ImageLink={image}
-                        imageLink={image}
-                        imageMedia={image}
-                        alt={`${article.articleProductName} ${index + 1}`}
-                        className="w-full h-full object-contain"
-                      />
+                                             <RobustProductImage
+                         s3ImageLink={image}
+                         imageLink={undefined}
+                         imageMedia={undefined}
+                         alt={`${article.articleProductName} ${index + 1}`}
+                         className="w-full h-full object-contain"
+                       />
                     </button>
                   ))}
                 </div>

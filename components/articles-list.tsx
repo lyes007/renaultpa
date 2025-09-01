@@ -22,7 +22,7 @@ interface Article {
   articleMediaFileName: string
   imageLink: string
   imageMedia: string
-  s3ImageLink: string
+  s3image: string
 }
 
 interface ArticlesListProps {
@@ -105,7 +105,7 @@ export function ArticlesList({
       name: article.articleProductName,
       price: 29.99, // Mock price for all articles
       quantity: 1,
-              image: article.imageLink || article.imageMedia || article.s3ImageLink || '',
+              image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
       supplier: article.supplierName,
       articleNo: article.articleNo,
     })
@@ -230,9 +230,9 @@ export function ArticlesList({
               >
                 <div className="aspect-square bg-muted flex items-center justify-center relative overflow-hidden">
                   <RobustProductImage
-                    s3ImageLink={article.s3ImageLink}
-                    imageLink={article.imageLink}
-                    imageMedia={article.imageMedia}
+                    s3ImageLink={article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : undefined}
+                    imageLink={undefined}
+                    imageMedia={undefined}
                     alt={article.articleProductName}
                     className="w-full h-full transition-transform duration-200 hover:scale-110"
                     size="xl"

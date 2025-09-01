@@ -31,10 +31,10 @@ export function RobustProductImage({
   const [currentSourceIndex, setCurrentSourceIndex] = useState(0)
 
   const imageSources = [
+    { name: "S3", url: s3ImageLink },
     { name: "Direct", url: imageLink },
-    { name: "Media", url: imageMedia },
-    { name: "S3", url: s3ImageLink }
-  ].filter(source => source.url)
+    { name: "Media", url: imageMedia }
+  ].filter(source => source.url && source.url.trim() !== "")
 
   const sizeClasses = {
     sm: "h-8 w-8",
@@ -61,7 +61,9 @@ export function RobustProductImage({
     if (imageSources.length > 0 && currentSourceIndex < imageSources.length) {
       const source = imageSources[currentSourceIndex]
       setCurrentImageSrc(source.url || "")
-      console.log(`Trying image source ${currentSourceIndex + 1}/${imageSources.length}: ${source.name} - ${source.url}`)
+      console.log(`[RobustProductImage] Trying source ${currentSourceIndex + 1}/${imageSources.length}: ${source.name}`)
+      console.log(`[RobustProductImage] URL: ${source.url}`)
+      console.log(`[RobustProductImage] Available sources:`, imageSources.map(s => `${s.name}: ${s.url ? 'HAS_URL' : 'NO_URL'}`))
     }
   }, [currentSourceIndex, imageSources])
 
@@ -77,7 +79,8 @@ export function RobustProductImage({
     const currentSource = imageSources[currentSourceIndex]
     if (currentSource) {
       setFailedSources(prev => [...prev, `${currentSource.name}: ${currentSource.url}`])
-      console.log(`Image failed to load from ${currentSource.name}:`, currentSource.url)
+      console.error(`[RobustProductImage] Image failed to load from ${currentSource.name}:`, currentSource.url)
+      console.error(`[RobustProductImage] Error details - Source index: ${currentSourceIndex}, Total sources: ${imageSources.length}`)
     }
     tryNextSource()
   }
@@ -86,22 +89,35 @@ export function RobustProductImage({
     setImageLoading(false)
     setImageError(false)
     const currentSource = imageSources[currentSourceIndex]
-    console.log(`Image loaded successfully from ${currentSource?.name}:`, currentSource?.url)
+    console.log(`[RobustProductImage] ✅ Image loaded successfully from ${currentSource?.name}:`, currentSource?.url)
   }
 
   // If no sources available or all failed, show fallback
   if (imageSources.length === 0 || imageError) {
+    console.log(`[RobustProductImage] ❌ No valid sources or all failed. Sources: ${imageSources.length}, Error: ${imageError}`)
     return (
       <div className={`flex flex-col items-center justify-center bg-muted rounded-md ${className}`}>
         <Package className={`${sizeClasses[size]} text-muted-foreground mb-2`} />
-        {showDebug && failedSources.length > 0 && (
+        {showDebug && (
           <div className="text-xs text-muted-foreground text-center px-2">
-            <div className="font-medium mb-1">Failed sources:</div>
-            {failedSources.map((source, index) => (
-              <div key={index} className="text-xs opacity-75 truncate max-w-full">
-                {source}
+            <div className="font-medium mb-1">Image Debug Info:</div>
+            <div className="space-y-1">
+              <div>Sources: {imageSources.length}</div>
+              <div>Original props:</div>
+              <div className="text-[10px] opacity-75">S3: {s3ImageLink ? '✓' : '✗'}</div>
+              <div className="text-[10px] opacity-75">Direct: {imageLink ? '✓' : '✗'}</div>
+              <div className="text-[10px] opacity-75">Media: {imageMedia ? '✓' : '✗'}</div>
+            </div>
+            {failedSources.length > 0 && (
+              <div className="mt-2">
+                <div className="font-medium mb-1">Failed sources:</div>
+                {failedSources.map((source, index) => (
+                  <div key={index} className="text-[10px] opacity-75 truncate max-w-full">
+                    {source}
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
@@ -110,6 +126,7 @@ export function RobustProductImage({
 
   // Don't render img tag until we have a valid source
   if (!currentImageSrc) {
+    console.log(`[RobustProductImage] No current image source. Sources available:`, imageSources.length)
     return (
       <div className={`relative ${className}`}>
         <div className="absolute inset-0 flex items-center justify-center bg-muted rounded-md">

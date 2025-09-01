@@ -29,6 +29,7 @@ export function DebugImageInfo({ article, className = "" }: DebugImageInfoProps)
   }
 
   const imageFields = {
+    s3image: article.s3image,
     s3ImageLink: article.s3ImageLink,
     imageLink: article.imageLink,
     imageMedia: article.imageMedia,
