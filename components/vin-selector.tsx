@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Loader2, Search, Car, CheckCircle, AlertTriangle, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
+import { Loader2, Search, Car, CheckCircle, AlertTriangle, ChevronRight, MoreHorizontal } from "lucide-react"
 import { vinCheck } from "@/lib/apify-api"
 import { useCountry } from "@/contexts/country-context"
 
@@ -151,11 +151,8 @@ Veuillez vérifier le VIN ou utiliser la sélection manuelle ci-dessous.`)
                 <Search className="h-6 w-6 text-primary" />
               </div>
               <h3 className="text-lg sm:text-xl font-bold text-primary mb-2">
-                Recherche par VIN
+                Recherche par carte grise
               </h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Identification automatique et précise avec votre numéro VIN
-              </p>
             </div>
 
             <div className="space-y-4">
@@ -367,17 +364,6 @@ Veuillez vérifier le VIN ou utiliser la sélection manuelle ci-dessous.`)
         </Card>
       )}
 
-      {/* Back to Manual Selection */}
-      <div className="text-center">
-        <Button 
-          variant="ghost" 
-          onClick={onBack} 
-          className="px-6 py-3 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Changer de méthode de sélection
-        </Button>
-      </div>
     </div>
   )
 }

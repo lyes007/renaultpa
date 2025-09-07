@@ -235,9 +235,6 @@ export function VehicleSelector() {
 
   // Format data for SimpleSelect components
   const formatManufacturersOptions = () => {
-    if (!manufacturers || !Array.isArray(manufacturers)) {
-      return []
-    }
     const options = manufacturers.map(manufacturer => ({
       value: manufacturer.manufacturerId.toString(),
       label: manufacturer.brand,
@@ -247,9 +244,6 @@ export function VehicleSelector() {
   }
 
   const formatModelsOptions = () => {
-    if (!models || !Array.isArray(models)) {
-      return []
-    }
     return models.map(model => ({
       value: model.modelId.toString(),
       label: model.modelName,
@@ -258,9 +252,6 @@ export function VehicleSelector() {
   }
 
   const formatVehiclesOptions = () => {
-    if (!vehicles || !Array.isArray(vehicles)) {
-      return []
-    }
     return vehicles.map(vehicle => ({
       value: vehicle.vehicleId.toString(),
       label: vehicle.typeEngineName,

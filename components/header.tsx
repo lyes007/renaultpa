@@ -317,16 +317,11 @@ export function Header() {
             onClick={() => router.push('/')}
           >
             <div className="flex items-center gap-1">
-              {/* Renault Pieces Auto Logo - Small for mobile, large for desktop */}
+              {/* Renault Pieces Auto Logo - Same logo for mobile and desktop */}
               <img
-                src="/LOGO Piece renault small.png"
-                alt="Pièces Auto Renault"
-                className="h-10 w-auto sm:hidden transition-all duration-300 group-hover:scale-105"
-                />
-                <img
                 src="/LOGO Piece renault.png"
                 alt="Pièces Auto Renault"
-                className="hidden sm:block h-16 w-auto lg:h-20 transition-all duration-300 group-hover:scale-105"
+                className="h-10 w-auto sm:h-16 lg:h-20 transition-all duration-300 group-hover:scale-105"
               />
             </div>
           </div>
