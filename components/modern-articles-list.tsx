@@ -20,12 +20,15 @@ import {
   Star,
   ChevronDown,
   SortAsc,
-  Euro
+  Euro,
+  Phone,
+  MessageCircle
 } from "lucide-react"
 import { getArticles } from "@/lib/apify-api"
 import { useCart } from "@/hooks/use-cart"
 import { useCountry } from "@/contexts/country-context"
 import { RobustProductImage } from "@/components/ui/robust-product-image"
+import { SupplierLogo } from "@/components/ui/supplier-logo"
 
 interface Article {
   articleId: number
@@ -39,6 +42,13 @@ interface Article {
   imageLink: string
   imageMedia: string
   s3image: string
+}
+
+interface StockStatus {
+  inStock: boolean
+  stockLevel: number
+  price: number
+  priceHT: number
 }
 
 interface ModernArticlesListProps {
@@ -71,6 +81,8 @@ export function ModernArticlesList({
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [currentPage, setCurrentPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
+  const [stockData, setStockData] = useState<Map<string, StockStatus>>(new Map())
+  const [stockLoading, setStockLoading] = useState(false)
   const { addItem } = useCart()
   const router = useRouter()
 
@@ -81,6 +93,36 @@ export function ModernArticlesList({
   useEffect(() => {
     setCurrentPage(1) // Reset page when filters change
   }, [searchTerm, selectedSupplier, sortBy])
+
+  const loadStockData = async (articles: Article[]) => {
+    try {
+      setStockLoading(true)
+      const articleCodes = articles.map(article => article.articleNo)
+      
+      const response = await fetch('/api/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articleCodes })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const stockMap = new Map<string, StockStatus>()
+        
+        Object.entries(data.stockStatuses || {}).forEach(([code, status]) => {
+          if (status) {
+            stockMap.set(code, status as StockStatus)
+          }
+        })
+        
+        setStockData(stockMap)
+      }
+    } catch (error) {
+      console.error('Error loading stock data:', error)
+    } finally {
+      setStockLoading(false)
+    }
+  }
 
   const loadArticles = async () => {
     try {
@@ -97,6 +139,11 @@ export function ModernArticlesList({
       const articlesData = (response.data as any)?.[0]?.articles || []
       console.log(`[ModernArticles] Loaded ${articlesData.length} articles for category:`, categoryName)
       setArticles(articlesData)
+      
+      // Load stock data for the articles
+      if (articlesData.length > 0) {
+        await loadStockData(articlesData)
+      }
     } catch (err) {
       setError("Erreur lors du chargement des articles")
       console.error("Error loading articles:", err)
@@ -108,6 +155,9 @@ export function ModernArticlesList({
   // Advanced filtering and sorting
   const filteredAndSortedArticles = useMemo(() => {
     let filtered = articles
+
+    // Filter out articles not in CSV (only show articles that exist in stock data)
+    filtered = filtered.filter((article) => stockData.has(article.articleNo))
 
     // Apply search filter
     if (searchTerm) {
@@ -133,7 +183,9 @@ export function ModernArticlesList({
         case 'supplier':
           return a.supplierName.localeCompare(b.supplierName)
         case 'price':
-          return 0 // Mock sorting since all prices are the same
+          const priceA = stockData.get(a.articleNo)?.price || 0
+          const priceB = stockData.get(b.articleNo)?.price || 0
+          return priceA - priceB
         case 'popularity':
           return Math.random() - 0.5 // Mock popularity
         default:
@@ -142,7 +194,7 @@ export function ModernArticlesList({
     })
 
     return filtered
-  }, [articles, searchTerm, selectedSupplier, sortBy])
+  }, [articles, searchTerm, selectedSupplier, sortBy, stockData])
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedArticles.length / ITEMS_PER_PAGE)
@@ -166,10 +218,13 @@ export function ModernArticlesList({
   ]
 
   const handleAddToCart = (article: Article) => {
+    const stockStatus = stockData.get(article.articleNo)
+    const price = stockStatus?.price || 29.99 // Fallback to mock price if no stock data
+    
     addItem({
       articleId: article.articleId,
       name: article.articleProductName,
-      price: 29.99,
+      price: price,
       quantity: 1,
       image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
       supplier: article.supplierName,
@@ -186,6 +241,16 @@ export function ModernArticlesList({
     setSelectedSupplier("")
     setSortBy('name')
     setCurrentPage(1)
+  }
+
+  const handleCall = () => {
+    window.open('tel:50134993', '_self')
+  }
+
+  const handleWhatsApp = (articleName: string, articleNo: string) => {
+    const message = `Bonjour, je suis intéressé par cet article en rupture de stock:\n\nNom: ${articleName}\nRéférence: ${articleNo}\n\nPouvez-vous me dire si vous pouvez l'importer? Merci.`
+    const whatsappUrl = `https://wa.me/21650134993?text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, '_blank')
   }
 
   if (loading) {
@@ -458,9 +523,12 @@ export function ModernArticlesList({
                           <h3 className="font-semibold text-sm leading-tight line-clamp-2 flex-1 text-foreground">
                             {article.articleProductName}
                           </h3>
-                          <Badge variant="secondary" className="text-xs shrink-0 supplier-badge">
-                            {article.supplierName}
-                          </Badge>
+                          <SupplierLogo 
+                            supplierName={article.supplierName}
+                            size="sm"
+                            showText={false}
+                            className="shrink-0"
+                          />
                         </div>
                         
                         <div className="flex items-center gap-2">
@@ -474,21 +542,82 @@ export function ModernArticlesList({
                         </div>
                       </div>
 
-                      {/* Price */}
-                      <div className="text-xl font-bold text-primary">
-                        29,99 <span className="text-sm font-medium">TND</span>
+                      {/* Price and Stock Status */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-xl font-bold text-primary">
+                            {(() => {
+                              const stockStatus = stockData.get(article.articleNo)
+                              const price = stockStatus?.price || 29.99
+                              return `${price.toFixed(2)} TND`
+                            })()}
+                          </div>
+                          <div>
+                            {(() => {
+                              const stockStatus = stockData.get(article.articleNo)
+                              if (stockStatus) {
+                                return stockStatus.inStock ? (
+                                  <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                                    En stock
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="destructive" className="text-xs">
+                                    Rupture
+                                  </Badge>
+                                )
+                              } else if (stockLoading) {
+                                return <Badge variant="secondary" className="text-xs">Vérification...</Badge>
+                              } else {
+                                // This should never show since we filter out articles not in CSV
+                                return null
+                              }
+                            })()}
+                          </div>
+                        </div>
                       </div>
 
                       {/* Actions */}
                       <div className={`grid gap-2 ${viewMode === 'list' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                        <Button
-                          onClick={() => handleAddToCart(article)}
-                          size="sm"
-                          className="w-full mobile-button transition-all hover:shadow-md min-h-[44px]"
-                        >
-                          <ShoppingCart className="h-4 w-4 mr-2" />
-                          Ajouter au panier
-                        </Button>
+                        {(() => {
+                          const stockStatus = stockData.get(article.articleNo)
+                          const isOutOfStock = stockStatus && !stockStatus.inStock
+                          
+                          if (isOutOfStock) {
+                            return (
+                              <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                  onClick={handleCall}
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full mobile-button transition-all hover:shadow-md min-h-[44px] hover:bg-blue-50 hover:border-blue-300"
+                                >
+                                  <Phone className="h-4 w-4 mr-2" />
+                                  Appeler
+                                </Button>
+                                <Button
+                                  onClick={() => handleWhatsApp(article.articleProductName, article.articleNo)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full mobile-button transition-all hover:shadow-md min-h-[44px] hover:bg-green-50 hover:border-green-300"
+                                >
+                                  <MessageCircle className="h-4 w-4 mr-2" />
+                                  WhatsApp
+                                </Button>
+                              </div>
+                            )
+                          } else {
+                            return (
+                              <Button
+                                onClick={() => handleAddToCart(article)}
+                                size="sm"
+                                className="w-full mobile-button transition-all hover:shadow-md min-h-[44px]"
+                              >
+                                <ShoppingCart className="h-4 w-4 mr-2" />
+                                Ajouter au panier
+                              </Button>
+                            )
+                          }
+                        })()}
                         
                         {viewMode === 'grid' && (
                           <Button

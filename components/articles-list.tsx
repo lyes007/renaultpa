@@ -5,11 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { ShoppingCart, Eye, ImageIcon, Search, Plus } from "lucide-react"
+import { ShoppingCart, Eye, ImageIcon, Search, Plus, Phone, MessageCircle } from "lucide-react"
 import { getArticles } from "@/lib/apify-api"
 import { ArticleCardSkeleton } from "./loading-skeleton"
 import { useCart } from "@/hooks/use-cart"
 import { RobustProductImage } from "@/components/ui/robust-product-image"
+import { SupplierLogo } from "@/components/ui/supplier-logo"
+
+interface StockStatus {
+  inStock: boolean
+  stockLevel: number
+  price: number
+  priceHT: number
+}
 
 interface Article {
   articleId: number
@@ -46,6 +54,7 @@ export function ArticlesList({
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedSupplier, setSelectedSupplier] = useState<string>("")
+  const [stockData, setStockData] = useState<Map<string, StockStatus>>(new Map())
   const { addItem } = useCart()
 
   useEffect(() => {
@@ -54,7 +63,7 @@ export function ArticlesList({
 
   useEffect(() => {
     filterArticles()
-  }, [articles, searchTerm, selectedSupplier])
+  }, [articles, searchTerm, selectedSupplier, stockData])
 
   const loadArticles = async () => {
     try {
@@ -70,6 +79,11 @@ export function ArticlesList({
 
       const articlesData = (response.data as any)?.[0]?.articles || []
       setArticles(articlesData)
+      
+      // Load stock data for the articles
+      if (articlesData.length > 0) {
+        loadStockData(articlesData)
+      }
     } catch (err) {
       setError("Erreur lors du chargement des articles")
       console.error("Error loading articles:", err)
@@ -78,8 +92,38 @@ export function ArticlesList({
     }
   }
 
+  const loadStockData = async (articles: Article[]) => {
+    try {
+      const articleCodes = articles.map(article => article.articleNo)
+      
+      const response = await fetch('/api/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articleCodes })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const stockMap = new Map<string, StockStatus>()
+        
+        Object.entries(data.stockStatuses || {}).forEach(([code, status]) => {
+          if (status) {
+            stockMap.set(code, status as StockStatus)
+          }
+        })
+        
+        setStockData(stockMap)
+      }
+    } catch (error) {
+      console.error('Error loading stock data:', error)
+    }
+  }
+
   const filterArticles = () => {
     let filtered = articles
+
+    // Filter out articles not in CSV (only show articles that exist in stock data)
+    filtered = filtered.filter((article) => stockData.has(article.articleNo))
 
     if (searchTerm) {
       filtered = filtered.filter(
@@ -100,15 +144,28 @@ export function ArticlesList({
   const uniqueSuppliers = Array.from(new Set(articles.map((article) => article.supplierName))).sort()
 
   const handleAddToCart = (article: Article) => {
+    const stockStatus = stockData.get(article.articleNo)
+    const price = stockStatus?.price || 29.99 // Use real price or fallback
+    
     addItem({
       articleId: article.articleId,
       name: article.articleProductName,
-      price: 29.99, // Mock price for all articles
+      price: price,
       quantity: 1,
               image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
       supplier: article.supplierName,
       articleNo: article.articleNo,
     })
+  }
+
+  const handleCall = () => {
+    window.open('tel:50134993', '_self')
+  }
+
+  const handleWhatsApp = (articleName: string, articleNo: string) => {
+    const message = `Bonjour, je suis intéressé par cet article en rupture de stock:\n\nNom: ${articleName}\nRéférence: ${articleNo}\n\nPouvez-vous me dire si vous pouvez l'importer? Merci.`
+    const whatsappUrl = `https://wa.me/21650134993?text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, '_blank')
   }
 
   if (loading) {
@@ -245,9 +302,12 @@ export function ArticlesList({
                       <h3 className="font-medium text-sm line-clamp-2 flex-1 leading-tight">
                         {article.articleProductName}
                       </h3>
-                      <Badge variant="secondary" className="text-xs shrink-0">
-                        {article.supplierName}
-                      </Badge>
+                      <SupplierLogo 
+                        supplierName={article.supplierName}
+                        size="sm"
+                        showText={false}
+                        className="shrink-0"
+                      />
                     </div>
                     <p className="text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-1 rounded">
                       Réf: {article.articleNo}
@@ -255,27 +315,84 @@ export function ArticlesList({
                     
                     {/* Price and Actions */}
                     <div className="space-y-2">
-                                             <div className="text-lg font-bold text-primary text-center">
-                         29,99 TND
-                       </div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-lg font-bold text-primary">
+                          {(() => {
+                            const stockStatus = stockData.get(article.articleNo)
+                            const price = stockStatus?.price || 29.99
+                            return `${price.toFixed(2)} TND`
+                          })()}
+                        </div>
+                        {(() => {
+                          const stockStatus = stockData.get(article.articleNo)
+                          if (stockStatus) {
+                            return stockStatus.inStock ? (
+                              <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                                En stock
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive" className="text-xs">
+                                Rupture
+                              </Badge>
+                            )
+                          } else {
+                            // This should never show since we filter out articles not in CSV
+                            return null
+                          }
+                        })()}
+                      </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          onClick={() => handleAddToCart(article)}
-                          className="w-full transition-colors"
-                          size="sm"
-                          variant="outline"
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Panier
-                        </Button>
-                        <Button
-                          onClick={() => onArticleSelect(article.articleId)}
-                          className="w-full transition-colors"
-                          size="sm"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Détails
-                        </Button>
+                        {(() => {
+                          const stockStatus = stockData.get(article.articleNo)
+                          const isOutOfStock = stockStatus && !stockStatus.inStock
+                          
+                          if (isOutOfStock) {
+                            return (
+                              <>
+                                <Button
+                                  onClick={handleCall}
+                                  className="w-full transition-colors hover:bg-blue-50 hover:border-blue-300"
+                                  size="sm"
+                                  variant="outline"
+                                >
+                                  <Phone className="h-4 w-4 mr-1" />
+                                  Appeler
+                                </Button>
+                                <Button
+                                  onClick={() => handleWhatsApp(article.articleProductName, article.articleNo)}
+                                  className="w-full transition-colors hover:bg-green-50 hover:border-green-300"
+                                  size="sm"
+                                  variant="outline"
+                                >
+                                  <MessageCircle className="h-4 w-4 mr-1" />
+                                  WhatsApp
+                                </Button>
+                              </>
+                            )
+                          } else {
+                            return (
+                              <>
+                                <Button
+                                  onClick={() => handleAddToCart(article)}
+                                  className="w-full transition-colors"
+                                  size="sm"
+                                  variant="outline"
+                                >
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Panier
+                                </Button>
+                                <Button
+                                  onClick={() => onArticleSelect(article.articleId)}
+                                  className="w-full transition-colors"
+                                  size="sm"
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Détails
+                                </Button>
+                              </>
+                            )
+                          }
+                        })()}
                       </div>
                     </div>
                   </div>

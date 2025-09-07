@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCart } from "@/hooks/use-cart"
 import { useCountry } from "@/contexts/country-context"
 import { RobustProductImage } from "@/components/ui/robust-product-image"
+import { SupplierLogo } from "@/components/ui/supplier-logo"
 import { 
   ArrowLeft, 
   ShoppingCart, 
@@ -26,7 +27,9 @@ import {
   ExternalLink,
   Zap,
   Award,
-  Clock
+  Clock,
+  Phone,
+  MessageCircle
 } from "lucide-react"
 
 interface ArticleDetailsProps {
@@ -70,6 +73,13 @@ interface ArticleData {
 }
 }
 
+interface StockStatus {
+  inStock: boolean
+  stockLevel: number
+  price: number
+  priceHT: number
+}
+
 export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
   const [article, setArticle] = useState<ArticleData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -78,6 +88,8 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
   const [selectedImage, setSelectedImage] = useState(0)
   const [isFavorite, setIsFavorite] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
+  const [stockStatus, setStockStatus] = useState<StockStatus | null>(null)
+  const [stockLoading, setStockLoading] = useState(false)
   
   const { addItem } = useCart()
   const { selectedCountry } = useCountry()
@@ -225,7 +237,7 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
         console.log(`[ArticleDetails] Raw article data from API:`, articleDetails)
         console.log(`[ArticleDetails] Processed media data:`, allMedia)
         
-        setArticle({
+        const articleData = {
           ...articleDetails,
           // Ensure s3image field is properly mapped from API response
           s3image: articleDetails.s3image,
@@ -233,7 +245,14 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
           allSpecifications: specifications?.articleAllSpecifications || [],
           eanNo: specifications?.articleEanNo || null,
           oemNo: specifications?.articleOemNo || []
-        })
+        }
+        
+        setArticle(articleData)
+        
+        // Load stock data for this article
+        if (articleDetails.articleNo) {
+          loadStockData(articleDetails.articleNo)
+        }
       } else {
         throw new Error('Article not found')
       }
@@ -245,13 +264,38 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
     }
   }
 
+  const loadStockData = async (articleNo: string) => {
+    try {
+      setStockLoading(true)
+      
+      const response = await fetch('/api/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ single: articleNo })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.stockStatus) {
+          setStockStatus(data.stockStatus)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading stock data:', error)
+    } finally {
+      setStockLoading(false)
+    }
+  }
+
   const handleAddToCart = () => {
     if (!article) return
+    
+    const price = stockStatus?.price || 29.99 // Use real price or fallback to mock
     
     addItem({
       articleId: article.articleId,
       name: article.articleProductName,
-      price: 29.99, // Mock price
+      price: price,
       quantity: quantity,
              image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
       supplier: article.supplierName,
@@ -261,6 +305,17 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
 
   const handleQuantityChange = (delta: number) => {
     setQuantity(Math.max(1, quantity + delta))
+  }
+
+  const handleCall = () => {
+    window.open('tel:50134993', '_self')
+  }
+
+  const handleWhatsApp = () => {
+    if (!article) return
+    const message = `Bonjour, je suis intéressé par cet article en rupture de stock:\n\nNom: ${article.articleProductName}\nRéférence: ${article.articleNo}\n\nPouvez-vous me dire si vous pouvez l'importer? Merci.`
+    const whatsappUrl = `https://wa.me/21650134993?text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, '_blank')
   }
 
   const copyToClipboard = (text: string) => {
@@ -323,9 +378,9 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
 
 
 
-  const mockPrice = 29.99
-  const mockOriginalPrice = 39.99
-  const discount = Math.round(((mockOriginalPrice - mockPrice) / mockOriginalPrice) * 100)
+  const currentPrice = stockStatus?.price || 29.99
+  const mockOriginalPrice = currentPrice * 1.3 // Create a mock original price for discount display
+  const discount = stockStatus ? Math.round(((mockOriginalPrice - currentPrice) / mockOriginalPrice) * 100) : 0
 
   return (
     <div className="max-w-7xl mx-auto article-details-mobile">
@@ -491,9 +546,11 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                   {article.articleProductName}
                 </h1>
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <Badge variant="secondary" className="mobile-badge text-xs">
-                    {article.supplierName}
-                  </Badge>
+                  <SupplierLogo 
+                    supplierName={article.supplierName}
+                    size="md"
+                    showText={true}
+                  />
                   <Badge variant="outline" className="mobile-badge text-xs">
                     Réf: {article.articleNo}
                   </Badge>
@@ -522,7 +579,7 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
             <div>
                   <div className="flex items-baseline gap-3">
                     <span className="mobile-product-price text-3xl font-bold text-primary price-pulse">
-                      {mockPrice.toFixed(2)} <span className="text-lg">TND</span>
+                      {currentPrice.toFixed(2)} <span className="text-lg">TND</span>
                     </span>
                     {discount > 0 && (
                       <span className="text-lg text-muted-foreground line-through">
@@ -535,10 +592,28 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                   </p>
                 </div>
                 <div className="text-right">
-                  <Badge className="bg-green-100 text-green-800 border-green-200">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    En stock
-                  </Badge>
+                  {stockStatus ? (
+                    stockStatus.inStock ? (
+                      <Badge className="bg-green-100 text-green-800 border-green-200">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        En stock
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive">
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Rupture de stock
+                      </Badge>
+                    )
+                  ) : stockLoading ? (
+                    <Badge variant="secondary">
+                      Vérification...
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Article non disponible
+                    </Badge>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -592,14 +667,72 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                   </div>
                   </div>
 
-                <Button 
-                  onClick={handleAddToCart}
-                  className="w-full h-12 text-base font-semibold"
-                  size="lg"
-                >
-                  <ShoppingCart className="h-5 w-5 mr-2" />
-                  Ajouter au panier • {(mockPrice * quantity).toFixed(2)} TND
-                </Button>
+                {(() => {
+                  const isOutOfStock = stockStatus && !stockStatus.inStock
+                  const isNotInCatalog = !stockStatus
+                  
+                  if (isOutOfStock) {
+                    return (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button 
+                            onClick={handleCall}
+                            className="h-12 text-base font-semibold hover:bg-blue-50 hover:border-blue-300"
+                            size="lg"
+                            variant="outline"
+                          >
+                            <Phone className="h-5 w-5 mr-2" />
+                            Appeler
+                          </Button>
+                          <Button 
+                            onClick={handleWhatsApp}
+                            className="h-12 text-base font-semibold hover:bg-green-50 hover:border-green-300"
+                            size="lg"
+                            variant="outline"
+                          >
+                            <MessageCircle className="h-5 w-5 mr-2" />
+                            WhatsApp
+                          </Button>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm text-muted-foreground">
+                            Article en rupture de stock - Contactez-nous pour vérifier la disponibilité
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  } else if (isNotInCatalog) {
+                    return (
+                      <div className="space-y-3">
+                        <Button 
+                          className="w-full h-12 text-base font-semibold"
+                          size="lg"
+                          disabled
+                          variant="outline"
+                        >
+                          <AlertCircle className="h-5 w-5 mr-2" />
+                          Article non disponible
+                        </Button>
+                        <div className="text-center">
+                          <p className="text-sm text-muted-foreground">
+                            Cet article n'est pas disponible dans notre catalogue
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  } else {
+                    return (
+                      <Button 
+                        onClick={handleAddToCart}
+                        className="w-full h-12 text-base font-semibold"
+                        size="lg"
+                      >
+                        <ShoppingCart className="h-5 w-5 mr-2" />
+                        Ajouter au panier • {(currentPrice * quantity).toFixed(2)} TND
+                      </Button>
+                    )
+                  }
+                })()}
 
                 <div className="grid grid-cols-2 gap-3">
                   <Button variant="outline" className="h-11">
@@ -609,8 +742,8 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                   <Button variant="outline" className="h-11">
                     <Share2 className="h-4 w-4 mr-2" />
                     Partager
-                </Button>
-              </div>
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

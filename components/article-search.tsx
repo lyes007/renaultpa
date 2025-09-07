@@ -7,11 +7,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Package, Loader2, Eye, Plus } from "lucide-react"
+import { Search, Package, Loader2, Eye, Plus, Phone, MessageCircle } from "lucide-react"
 import { searchArticlesByNumber } from "@/lib/apify-api"
 import { useCart } from "@/hooks/use-cart"
 import { useCountry } from "@/contexts/country-context"
 import { RobustProductImage } from "@/components/ui/robust-product-image"
+import { SupplierLogo } from "@/components/ui/supplier-logo"
+
+interface StockStatus {
+  inStock: boolean
+  stockLevel: number
+  price: number
+  priceHT: number
+}
 
 interface SearchResult {
   articleId: number
@@ -44,6 +52,7 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
   const [isLoading, setIsLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [resultCount, setResultCount] = useState(0)
+  const [stockData, setStockData] = useState<Map<string, StockStatus>>(new Map())
   const { addItem } = useCart()
 
   // Auto-search when initialSearchQuery is provided
@@ -92,6 +101,9 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
           setSearchResults(searchData.articles)
           setResultCount(searchData.countArticles || searchData.articles.length)
           console.log("[ArticleSearch] Found articles:", searchData.articles.length)
+          
+          // Load stock data for search results
+          loadStockDataForResults(searchData.articles)
         } else {
           setSearchResults([])
           setResultCount(0)
@@ -111,6 +123,38 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
     await handleSearchWithQuery(searchQuery)
   }
 
+  const loadStockDataForResults = async (articles: SearchResult[]) => {
+    try {
+      const articleCodes = articles.map(article => article.articleNo)
+      
+      const response = await fetch('/api/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articleCodes })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const stockMap = new Map<string, StockStatus>()
+        
+        Object.entries(data.stockStatuses || {}).forEach(([code, status]) => {
+          if (status) {
+            stockMap.set(code, status as StockStatus)
+          }
+        })
+        
+        setStockData(stockMap)
+        
+        // Filter search results to only show articles that exist in CSV
+        const filteredResults = articles.filter(article => stockMap.has(article.articleNo))
+        setSearchResults(filteredResults)
+        setResultCount(filteredResults.length)
+      }
+    } catch (error) {
+      console.error('Error loading stock data for search results:', error)
+    }
+  }
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleSearch()
@@ -118,15 +162,28 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
   }
 
   const handleAddToCart = (article: SearchResult) => {
+    const stockStatus = stockData.get(article.articleNo)
+    const price = stockStatus?.price || 29.99 // Use real price or fallback
+    
     addItem({
       articleId: article.articleId,
       name: article.articleProductName,
-      price: 29.99, // Mock price for all articles
+      price: price,
       quantity: 1,
-              image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
+      image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
       supplier: article.supplierName,
       articleNo: article.articleNo,
     })
+  }
+
+  const handleCall = () => {
+    window.open('tel:50134993', '_self')
+  }
+
+  const handleWhatsApp = (articleName: string, articleNo: string) => {
+    const message = `Bonjour, je suis intéressé par cet article en rupture de stock:\n\nNom: ${articleName}\nRéférence: ${articleNo}\n\nPouvez-vous me dire si vous pouvez l'importer? Merci.`
+    const whatsappUrl = `https://wa.me/21650134993?text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, '_blank')
   }
 
   return (
@@ -210,39 +267,98 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
                             <span className="font-mono text-xs bg-muted px-2 py-1 rounded">{article.articleNo}</span>
                           </div>
 
-                          <div className="flex justify-between">
+                          <div className="flex justify-between items-center">
                             <span>Fournisseur:</span>
-                            <Badge variant="outline" className="text-xs">
-                              {article.supplierName}
-                            </Badge>
+                            <SupplierLogo 
+                              supplierName={article.supplierName}
+                              size="sm"
+                              showText={false}
+                            />
                           </div>
                         </div>
 
                         {/* Price and Actions */}
                         <div className="space-y-2 mt-3">
-                          <div className="text-lg font-bold text-primary text-center">
-                            29,99 TND
+                          <div className="flex items-center justify-between">
+                            <div className="text-lg font-bold text-primary">
+                              {(() => {
+                                const stockStatus = stockData.get(article.articleNo)
+                                const price = stockStatus?.price || 29.99
+                                return `${price.toFixed(2)} TND`
+                              })()}
+                            </div>
+                            {(() => {
+                              const stockStatus = stockData.get(article.articleNo)
+                              if (stockStatus) {
+                                return stockStatus.inStock ? (
+                                  <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                                    En stock
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="destructive" className="text-xs">
+                                    Rupture
+                                  </Badge>
+                                )
+                              } else {
+                                // This should never show since we filter out articles not in CSV
+                                return null
+                              }
+                            })()}
                           </div>
                           <div className="grid grid-cols-2 gap-2">
-                            <Button
-                              onClick={() => handleAddToCart(article)}
-                              className="w-full transition-colors"
-                              size="sm"
-                              variant="outline"
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              Panier
-                            </Button>
-                            {onArticleSelect && (
-                              <Button
-                                onClick={() => onArticleSelect(article.articleId)}
-                                className="w-full transition-colors"
-                                size="sm"
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Détails
-                              </Button>
-                            )}
+                            {(() => {
+                              const stockStatus = stockData.get(article.articleNo)
+                              const isOutOfStock = stockStatus && !stockStatus.inStock
+                              
+                              if (isOutOfStock) {
+                                return (
+                                  <>
+                                    <Button
+                                      onClick={handleCall}
+                                      className="w-full transition-colors hover:bg-blue-50 hover:border-blue-300"
+                                      size="sm"
+                                      variant="outline"
+                                    >
+                                      <Phone className="h-4 w-4 mr-1" />
+                                      Appeler
+                                    </Button>
+                                    <Button
+                                      onClick={() => handleWhatsApp(article.articleProductName, article.articleNo)}
+                                      className="w-full transition-colors hover:bg-green-50 hover:border-green-300"
+                                      size="sm"
+                                      variant="outline"
+                                    >
+                                      <MessageCircle className="h-4 w-4 mr-1" />
+                                      WhatsApp
+                                    </Button>
+                                  </>
+                                )
+                              } else {
+                                return (
+                                  <>
+                                    <Button
+                                      onClick={() => handleAddToCart(article)}
+                                      className="w-full transition-colors"
+                                      size="sm"
+                                      variant="outline"
+                                    >
+                                      <Plus className="h-4 w-4 mr-1" />
+                                      Panier
+                                    </Button>
+                                    {onArticleSelect && (
+                                      <Button
+                                        onClick={() => onArticleSelect(article.articleId)}
+                                        className="w-full transition-colors"
+                                        size="sm"
+                                      >
+                                        <Eye className="h-4 w-4 mr-1" />
+                                        Détails
+                                      </Button>
+                                    )}
+                                  </>
+                                )
+                              }
+                            })()}
                           </div>
                         </div>
                       </div>

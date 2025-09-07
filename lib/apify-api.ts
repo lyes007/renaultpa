@@ -132,3 +132,80 @@ export async function searchArticlesByNumberAndSupplier(articleNo: string, suppl
     countryId,
   })
 }
+
+// New enhanced search endpoints
+export async function searchArticlesByOEMNumber(oemNo: string, countryId: number = 253) {
+  return callApifyActor({
+    selectPageType: "search-articles-by-article-oem-number",
+    oemNo,
+    langId: 4,
+    countryId,
+  })
+}
+
+export async function postQuickArticleSearch(searchQuery: string, countryId: number = 253) {
+  return callApifyActor({
+    selectPageType: "post-quick-article-search",
+    searchQuery,
+    langId: 4,
+    countryId,
+  })
+}
+
+export async function searchArticlesByNumberAndSupplierId(articleNo: string, supplierId: number, countryId: number = 253) {
+  return callApifyActor({
+    selectPageType: "search-articles-by-article-number-and-supplier-id",
+    articleNo,
+    supplierId,
+    langId: 4,
+    countryId,
+  })
+}
+
+export async function vinCheck(vin: string, countryId: number = 253) {
+  try {
+    console.log("[VIN-API] Checking VIN:", vin)
+
+    const runResponse = await fetch('/api/apify', {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        selectPageType: "vin-check",
+        vinNo: vin, // Use vinNo parameter name (not "vin")
+        langId: 4, // Use langId 4 for proper TecDoc results
+      }),
+    })
+
+    if (!runResponse.ok) {
+      const errorText = await runResponse.text()
+      console.error("[VIN-API] API Error Response:", errorText)
+      throw new Error(`Failed to run VIN check: ${runResponse.status} ${runResponse.statusText}`)
+    }
+
+    const responseText = await runResponse.text()
+
+    if (!responseText || responseText.trim() === "") {
+      console.log("[VIN-API] Empty response received")
+      return { data: [] }
+    }
+
+    let results
+    try {
+      results = JSON.parse(responseText)
+      console.log("[VIN-API] VIN check completed successfully")
+    } catch (parseError) {
+      console.error("[VIN-API] JSON Parse Error:", parseError)
+      throw new Error(`Invalid JSON response: ${parseError}`)
+    }
+
+    return { data: results }
+  } catch (error) {
+    console.error("[VIN-API] VIN check error:", error)
+    return {
+      data: [],
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    }
+  }
+}

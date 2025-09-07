@@ -22,11 +22,19 @@ import {
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { useCart } from "@/hooks/use-cart"
-import { searchArticlesByNumber } from "@/lib/apify-api"
+import { searchArticlesByNumber, searchArticlesByOEMNumber, postQuickArticleSearch, searchArticlesByNumberAndSupplierId } from "@/lib/apify-api"
 import { useRouter } from "next/navigation"
 import { useCountry } from "@/contexts/country-context"
 import { CountrySelector } from "@/components/country-selector"
 import { RobustProductImage } from "@/components/ui/robust-product-image"
+import { SupplierLogo } from "@/components/ui/supplier-logo"
+
+interface StockStatus {
+  inStock: boolean
+  stockLevel: number
+  price: number
+  priceHT: number
+}
 
 export function Header() {
   const { selectedCountry } = useCountry()
@@ -39,7 +47,7 @@ export function Header() {
   const [searchFocused, setSearchFocused] = useState(false)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [searchHistory, setSearchHistory] = useState<string[]>([])
-  const [mobileSearchExpanded, setMobileSearchExpanded] = useState(false)
+  const [stockData, setStockData] = useState<Map<string, StockStatus>>(new Map())
   const searchRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const mobileSearchRef = useRef<HTMLInputElement>(null)
@@ -72,7 +80,7 @@ export function Header() {
     localStorage.setItem('recent-searches', JSON.stringify(newRecent))
   }
 
-  // Handle search with history
+  // Enhanced search with multiple endpoints
   const handleSearch = async (query?: string) => {
     const searchTerm = query || searchQuery.trim()
     if (!searchTerm) return
@@ -82,29 +90,105 @@ export function Header() {
     saveToHistory(searchTerm)
     
     try {
-      const response = await searchArticlesByNumber(searchTerm, selectedCountry.id)
-      if (response.error) {
-        setSearchResults([])
-      } else {
+      console.log("[ENHANCED-SEARCH] Starting multi-endpoint search for:", searchTerm)
+      
+      // Run multiple search endpoints in parallel for better results
+      const searchPromises = [
+        searchArticlesByNumber(searchTerm, selectedCountry.id),
+        searchArticlesByOEMNumber(searchTerm, selectedCountry.id),
+        postQuickArticleSearch(searchTerm, selectedCountry.id)
+      ]
+      
+      const responses = await Promise.allSettled(searchPromises)
+      console.log("[ENHANCED-SEARCH] All search responses:", responses)
+      
+      let allArticles: any[] = []
+      
+      // Process each response and collect articles
+      responses.forEach((response, index) => {
+        const searchType = ['article-number', 'oem-number', 'quick-search'][index]
+        
+        if (response.status === 'fulfilled' && !response.value.error) {
+          console.log(`[ENHANCED-SEARCH] ${searchType} search successful`)
+          
         let searchData: any = null
-        
-        if (Array.isArray(response.data) && response.data.length > 0) {
-          searchData = response.data[0]
-        } else if (response.data && typeof response.data === 'object') {
-          searchData = response.data
-        }
-        
-        if (searchData?.articles) {
-          setSearchResults(searchData.articles)
+          if (Array.isArray(response.value.data) && response.value.data.length > 0) {
+            searchData = response.value.data[0]
+          } else if (response.value.data && typeof response.value.data === 'object') {
+            searchData = response.value.data
+          }
+          
+          if (searchData?.articles && Array.isArray(searchData.articles)) {
+            console.log(`[ENHANCED-SEARCH] Found ${searchData.articles.length} articles from ${searchType}`)
+            allArticles.push(...searchData.articles)
+          }
         } else {
-          setSearchResults([])
+          console.log(`[ENHANCED-SEARCH] ${searchType} search failed or returned no results`)
         }
+      })
+      
+      // Remove duplicates based on articleId
+      const uniqueArticles = allArticles.filter((article, index, self) => 
+        index === self.findIndex(a => a.articleId === article.articleId)
+      )
+      
+      console.log(`[ENHANCED-SEARCH] Total unique articles found: ${uniqueArticles.length}`)
+      
+      if (uniqueArticles.length > 0) {
+        // Sort by relevance (articles from article-number search first, then others)
+        const sortedArticles = uniqueArticles.sort((a, b) => {
+          // Prioritize exact matches in article number
+          const aExactMatch = a.articleNo?.toLowerCase().includes(searchTerm.toLowerCase())
+          const bExactMatch = b.articleNo?.toLowerCase().includes(searchTerm.toLowerCase())
+          
+          if (aExactMatch && !bExactMatch) return -1
+          if (!aExactMatch && bExactMatch) return 1
+          return 0
+        })
+        
+        setSearchResults(sortedArticles)
+          // Load stock data for search results
+        loadStockDataForResults(sortedArticles)
+        } else {
+        console.log("[ENHANCED-SEARCH] No articles found from any endpoint")
+          setSearchResults([])
       }
     } catch (error) {
-      console.error("Search failed:", error)
+      console.error("[ENHANCED-SEARCH] Search failed:", error)
       setSearchResults([])
     } finally {
       setIsSearching(false)
+    }
+  }
+
+  const loadStockDataForResults = async (articles: any[]) => {
+    try {
+      const articleCodes = articles.map(article => article.articleNo)
+      
+      const response = await fetch('/api/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articleCodes })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const stockMap = new Map<string, StockStatus>()
+        
+        Object.entries(data.stockStatuses || {}).forEach(([code, status]) => {
+          if (status) {
+            stockMap.set(code, status as StockStatus)
+          }
+        })
+        
+        setStockData(stockMap)
+        
+        // Filter search results to only show articles that exist in CSV
+        const filteredResults = articles.filter(article => stockMap.has(article.articleNo))
+        setSearchResults(filteredResults)
+      }
+    } catch (error) {
+      console.error('Error loading stock data for search results:', error)
     }
   }
 
@@ -151,20 +235,6 @@ export function Header() {
     handleSearch(query)
   }
 
-  // Mobile search expansion handlers
-  const expandMobileSearch = () => {
-    setMobileSearchExpanded(true)
-    setTimeout(() => {
-      mobileSearchRef.current?.focus()
-    }, 300)
-  }
-
-  const collapseMobileSearch = () => {
-    setMobileSearchExpanded(false)
-    setSearchQuery("")
-    setShowSearchResults(false)
-    setSearchResults([])
-  }
 
   // Handle mobile search
   const handleMobileSearch = async () => {
@@ -197,7 +267,7 @@ export function Header() {
   }, [])
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 shadow-sm">
+    <header className="border-b bg-background shadow-sm">
       <div className="container mx-auto px-4 lg:px-6">
         {/* Top bar for contact info - desktop only */}
         <div className="hidden lg:flex items-center justify-between py-2 text-xs text-muted-foreground border-b border-border/30">
@@ -228,56 +298,36 @@ export function Header() {
 
         {/* Main navigation */}
         <div className="flex items-center justify-between py-3 lg:py-4">
-          {/* Logo and brand */}
+          {/* Mobile Menu Button - Left side on mobile */}
+          <div className="lg:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11 rounded-xl hover:bg-primary/10 transition-all duration-200"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              <Menu className={`h-5 w-5 transition-transform duration-200 ${mobileMenuOpen ? 'rotate-90' : ''}`} />
+              <span className="sr-only">Menu</span>
+            </Button>
+          </div>
+
+          {/* Logo and brand - Centered on mobile, left on desktop */}
           <div 
-            className="flex items-center space-x-3 cursor-pointer group"
+            className="flex items-center space-x-3 cursor-pointer group lg:flex-1"
             onClick={() => router.push('/')}
           >
             <div className="flex items-center gap-1">
-              {/* Light mode logos */}
-              <div className="flex items-center gap-1 dark:hidden">
-                <img
-                  src="/LL1.png"
-                  alt="SPAR Logo 1"
-                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
+              {/* Renault Pieces Auto Logo - Small for mobile, large for desktop */}
+              <img
+                src="/LOGO Piece renault small.png"
+                alt="Pièces Auto Renault"
+                className="h-10 w-auto sm:hidden transition-all duration-300 group-hover:scale-105"
                 />
                 <img
-                  src="/LL2.png"
-                  alt="SPAR Logo 2"
-                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
-                />
-                <img
-                  src="/LL3.png"
-                  alt="SPAR Logo 3"
-                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
-                />
-              </div>
-              {/* Dark mode logos */}
-              <div className="hidden dark:flex items-center gap-1">
-                <img
-                  src="/DL1.png"
-                  alt="SPAR Logo 1"
-                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
-                />
-                <img
-                  src="/DL2.png"
-                  alt="SPAR Logo 2"
-                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
-                />
-                <img
-                  src="/DL3.png"
-                  alt="SPAR Logo 3"
-                  className="h-8 w-auto sm:h-10 lg:h-12 transition-all duration-300 group-hover:scale-105"
-                />
-              </div>
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-lg lg:text-xl font-bold text-primary group-hover:text-primary/80 transition-colors">
-                SPAR
-              </h1>
-              <p className="text-xs lg:text-sm text-muted-foreground">
-                Ste Pièces Auto Renault
-              </p>
+                src="/LOGO Piece renault.png"
+                alt="Pièces Auto Renault"
+                className="hidden sm:block h-16 w-auto lg:h-20 transition-all duration-300 group-hover:scale-105"
+              />
             </div>
           </div>
 
@@ -391,17 +441,42 @@ export function Header() {
                             <p className="text-sm font-semibold truncate text-foreground group-hover:text-primary transition-colors">
                               {article.articleProductName}
                             </p>
+                            <div className="flex items-center gap-2">
                             <p className="text-xs text-muted-foreground truncate">
-                              Réf: {article.articleNo} • {article.supplierName}
-                            </p>
+                                Réf: {article.articleNo}
+                              </p>
+                              <SupplierLogo 
+                                supplierName={article.supplierName}
+                                size="sm"
+                                showText={false}
+                              />
+                            </div>
                           </div>
                           <div className="text-right">
                             <div className="text-sm font-bold text-primary">
-                              29,99 TND
+                              {(() => {
+                                const stockStatus = stockData.get(article.articleNo)
+                                const price = stockStatus?.price || 29.99
+                                return `${price.toFixed(2)} TND`
+                              })()}
                             </div>
-                            <Badge variant="secondary" className="text-xs mt-1">
-                              En stock
-                            </Badge>
+                            {(() => {
+                              const stockStatus = stockData.get(article.articleNo)
+                              if (stockStatus) {
+                                return stockStatus.inStock ? (
+                                  <Badge variant="secondary" className="text-xs mt-1 bg-green-100 text-green-800">
+                                    En stock
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="destructive" className="text-xs mt-1">
+                                    Rupture
+                                  </Badge>
+                                )
+                              } else {
+                                // This should never show since we filter out articles not in CSV
+                                return null
+                              }
+                            })()}
                           </div>
                         </div>
                       ))}
@@ -475,20 +550,6 @@ export function Header() {
             )}
           </div>
 
-          {/* Mobile Search Icon */}
-          <div className="sm:hidden flex items-center">
-            {!mobileSearchExpanded && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={expandMobileSearch}
-                className="h-11 w-11 rounded-xl hover:bg-primary/10 transition-all duration-200 hover:scale-105 search-icon-mobile"
-              >
-                <Search className="h-5 w-5 text-foreground" />
-              </Button>
-            )}
-          </div>
-
           {/* Modern Action Buttons */}
           <div className="flex items-center gap-2 lg:gap-3">
             {/* Desktop Navigation Links */}
@@ -542,17 +603,6 @@ export function Header() {
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all duration-300 dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Basculer le thème</span>
             </Button>
-
-            {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden h-11 w-11 rounded-xl hover:bg-primary/10 transition-all duration-200"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              <Menu className={`h-5 w-5 transition-transform duration-200 ${mobileMenuOpen ? 'rotate-90' : ''}`} />
-              <span className="sr-only">Menu</span>
-            </Button>
           </div>
         </div>
 
@@ -563,9 +613,8 @@ export function Header() {
               <div className="p-6 space-y-6">
                 {/* Brand info */}
                                  <div className="text-center space-y-2">
-                   <h2 className="text-xl font-bold text-primary">SPAR</h2>
                    <p className="text-sm text-muted-foreground">
-                     Ste Pièces Auto Renault
+                     Spécialiste pièces détachées
                    </p>
                   <div className="flex justify-center gap-4 mt-4">
                     <Badge variant="secondary" className="text-xs">
@@ -652,116 +701,84 @@ export function Header() {
         )}
       </div>
 
-      {/* Mobile Search Overlay - Covers entire navbar */}
-      {mobileSearchExpanded && (
-        <div className="fixed top-0 left-0 right-0 bg-background border-b border-border/30 shadow-xl z-[9999] mobile-search-overlay">
-          {/* Search Header */}
-          <div className="flex items-center h-16 px-4 border-b border-border/20">
-            <div className="flex-1 relative">
+      {/* Mobile Search Bar - Always visible under navbar */}
+      <div className="sm:hidden border-t border-border/30 bg-background/95 backdrop-blur-sm">
+        <div className="px-4 py-3">
+          <div className="relative">
+            {/* Search Icon */}
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10">
+              {isSearching ? (
+                <div className="h-4 w-4 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+              ) : (
+                <Search className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+
+            {/* Mobile Search Input */}
               <input
                 ref={mobileSearchRef}
                 type="text"
-                placeholder="Rechercher"
+              placeholder="Rechercher par référence, marque..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     handleMobileSearch()
-                  } else if (e.key === "Escape") {
-                    collapseMobileSearch()
                   }
                 }}
-                className="w-full px-4 py-3 bg-muted/30 border border-border/40 rounded-lg text-base 
+              onFocus={handleSearchFocus}
+              onBlur={handleSearchBlur}
+              className="w-full pl-10 pr-12 py-3 bg-muted/30 border border-border/40 rounded-lg text-base 
                          focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50
-                         placeholder:text-muted-foreground/70 placeholder:text-left mobile-search-input"
+                       placeholder:text-muted-foreground/70 mobile-search-input"
               />
-            </div>
             
-            {/* Close Button */}
+            {/* Clear Button */}
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+              {searchQuery && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={collapseMobileSearch}
-              className="ml-3 h-10 w-10 rounded-lg hover:bg-muted/80"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-
-                     {/* Search Content Area */}
-           <div className="max-h-[calc(100vh-4rem)] overflow-y-auto">
-             {/* Recent Searches only when no query */}
-             {!searchQuery && !showSearchResults && recentSearches.length > 0 && (
-               <div className="p-4">
-                 <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-                   Recherches récentes
-                 </h3>
-                 <div className="space-y-1">
-                   {recentSearches.map((query, index) => (
-                     <button
-                       key={index}
                        onClick={() => {
-                         setSearchQuery(query)
-                         handleSearch(query)
-                       }}
-                       className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left recent-search-item"
-                     >
-                       <Clock className="h-4 w-4 text-muted-foreground" />
-                       <span className="text-sm">{query}</span>
-                     </button>
-                   ))}
+                    setSearchQuery("")
+                    setShowSearchResults(false)
+                    setSearchResults([])
+                  }}
+                  className="h-8 w-8 hover:bg-muted/80 rounded-lg"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
                  </div>
                </div>
-             )}
 
+          {/* Mobile Search Results */}
+          {showSearchResults && (
+            <div className="mt-3 bg-background/95 backdrop-blur-md border border-border/20 rounded-lg shadow-lg max-h-80 overflow-y-auto">
             {/* Search Results */}
-            {showSearchResults && searchResults.length > 0 && (
-              <div className="p-4">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
+              {searchResults.length > 0 && (
+                <div className="p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {searchResults.length} résultat{searchResults.length > 1 ? 's' : ''}
-                </h3>
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleViewAllResults}
+                      className="text-xs h-6 px-2 rounded"
+                    >
+                      Voir tous
+                    </Button>
+                  </div>
                 <div className="space-y-2">
-                  {searchResults.slice(0, 8).map((article, index) => (
+                    {searchResults.slice(0, 5).map((article, index) => (
                     <div
                       key={article.articleId}
-                      onTouchEnd={(e) => {
-                        console.log('=== MOBILE SEARCH TOUCH DEBUG ===')
-                        console.log('Touch end event triggered')
-                        console.log('Article ID:', article.articleId)
-                        console.log('Article object:', article)
-                        
-                        e.preventDefault()
-                        e.stopPropagation()
-                        
-                        try {
-                          console.log('Attempting to close mobile search...')
-                          collapseMobileSearch()
-                          console.log('Mobile search closed')
-                          
-                          console.log('Attempting navigation to:', `/article/${article.articleId}`)
-                          router.push(`/article/${article.articleId}`)
-                          console.log('Navigation attempted')
-                        } catch (error) {
-                          console.error('Error during navigation:', error)
-                        }
-                        
-                        console.log('=== END TOUCH DEBUG ===')
-                      }}
-                      onClick={(e) => {
-                        console.log('Click event also triggered')
-                        e.preventDefault()
-                        e.stopPropagation()
-                        collapseMobileSearch()
-                        router.push(`/article/${article.articleId}`)
-                      }}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors mobile-search-result"
-                      style={{ 
-                        animationDelay: `${index * 50}ms`,
-                        touchAction: 'manipulation',
-                        userSelect: 'none'
-                      }}
-                    >
-                      <div className="w-12 h-12 bg-muted/30 rounded-lg flex-shrink-0 overflow-hidden">
+                        onClick={() => handleArticleSelect(article.articleId)}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                      >
+                        <div className="w-10 h-10 bg-muted/30 rounded-lg flex-shrink-0 overflow-hidden">
                         <RobustProductImage
                           s3ImageLink={article.s3image && article.s3image.includes('fsn1.your-objectstorage.com') ? article.s3image : undefined}
                           imageLink={undefined}
@@ -771,51 +788,92 @@ export function Header() {
                           showDebug={false}
                           fallbackContent={
                             <div className="w-full h-full flex items-center justify-center">
-                              <Search className="h-5 w-5 text-muted-foreground" />
+                                <Search className="h-4 w-4 text-muted-foreground" />
                             </div>
                           }
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{article.articleProductName}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          Réf: {article.articleNo} • {article.supplierName}
-                        </p>
-                        <p className="text-sm font-semibold text-primary">29,99 TND</p>
+                          <p className="text-sm font-medium truncate">{article.articleProductName}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-muted-foreground truncate">
+                              Réf: {article.articleNo}
+                            </p>
+                            <SupplierLogo 
+                              supplierName={article.supplierName}
+                              size="sm"
+                              showText={false}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-xs font-semibold text-primary">
+                            {(() => {
+                              const stockStatus = stockData.get(article.articleNo)
+                              const price = stockStatus?.price || 29.99
+                              return `${price.toFixed(2)} TND`
+                            })()}
+                          </p>
+                          {(() => {
+                            const stockStatus = stockData.get(article.articleNo)
+                            if (stockStatus) {
+                              return stockStatus.inStock ? (
+                                  <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-green-100 text-green-800">
+                                    Stock
+                                </Badge>
+                              ) : (
+                                  <Badge variant="destructive" className="text-[10px] px-1 py-0">
+                                  Rupture
+                                </Badge>
+                              )
+                            } else {
+                              return null
+                            }
+                          })()}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
-                
-                {searchResults.length > 8 && (
+                </div>
+              )}
+
+              {/* Recent Searches - Show when no results or just focused */}
+              {((searchResults.length === 0 && !isSearching) || (searchFocused && !searchQuery)) && recentSearches.length > 0 && (
+                <div className="p-3">
+                  <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                    Récentes
+                  </h4>
+                  <div className="space-y-1">
+                    {recentSearches.map((query, index) => (
                   <button
-                    onClick={() => {
-                      handleViewAllResults()
-                      collapseMobileSearch()
-                    }}
-                    className="w-full mt-4 p-3 border border-border/40 rounded-lg hover:bg-muted/50 transition-colors text-center text-sm font-medium"
-                  >
-                    Voir tous les {searchResults.length} résultats
+                        key={index}
+                        onClick={() => handleRecentSearch(query)}
+                        className="w-full text-left px-2 py-1 rounded text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors flex items-center gap-2"
+                      >
+                        <Clock className="h-3 w-3 text-primary" />
+                        {query}
                   </button>
-                )}
+                    ))}
+                  </div>
               </div>
             )}
 
             {/* No results */}
             {showSearchResults && searchResults.length === 0 && searchQuery && !isSearching && (
-              <div className="p-8 text-center">
-                <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search className="h-8 w-8 text-muted-foreground" />
+                <div className="p-4 text-center">
+                  <div className="w-12 h-12 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Search className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <p className="font-medium mb-1">Aucun résultat trouvé</p>
-                <p className="text-sm text-muted-foreground">
-                  Essayez avec d'autres mots-clés ou une référence différente
+                  <p className="text-sm font-medium mb-1">Aucun résultat</p>
+                  <p className="text-xs text-muted-foreground">
+                    Essayez d'autres mots-clés
                 </p>
               </div>
             )}
-          </div>
         </div>
       )}
+        </div>
+      </div>
     </header>
   )
 }

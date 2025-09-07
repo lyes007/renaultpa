@@ -7,6 +7,9 @@ import { VehicleSelector } from "@/components/vehicle-selector"
 import ArticleSearch from "@/components/article-search"
 import { ArticleDetails } from "@/components/article-details"
 import { CartDrawer } from "@/components/cart-drawer"
+import { ManufacturerSelection } from "@/components/manufacturer-selection"
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
+import { ChevronDown } from "lucide-react"
 
 export default function HomePage() {
   const [selectedArticleId, setSelectedArticleId] = useState<number | null>(null)
@@ -57,6 +60,15 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <Header />
 
+      {/* Banner Vidange - Home page only */}
+      <div className="w-full">
+        <img
+          src="/BANNER VIDANGE.png"
+          alt="Pack Vidange Voiture - Tout pour votre vidange facile"
+          className="w-full h-auto object-cover"
+        />
+      </div>
+
       <main className="container mx-auto px-4 py-6 sm:py-8">
         <div className="max-w-6xl mx-auto">
           <VehicleSelector />
@@ -79,11 +91,18 @@ export default function HomePage() {
             )}
 
             {!searchQuery && (
-              <div className="text-center mt-12">
-                <div className="inline-flex items-center gap-2 p-4 bg-muted/50 rounded-lg">
-                  <span className="text-muted-foreground">
-                    Vous pouvez aussi rechercher directement par référence dans la barre de recherche ci-dessus
-                  </span>
+              <div className="space-y-12 mt-12">
+                <div className="text-center">
+                  <div className="inline-flex items-center gap-2 p-4 bg-muted/50 rounded-lg">
+                    <span className="text-muted-foreground">
+                      Vous pouvez aussi rechercher directement par référence dans la barre de recherche ci-dessus
+                    </span>
+                  </div>
+                </div>
+
+                {/* Manufacturer Selection Section */}
+                <div className="bg-gradient-to-br from-background to-muted/10 rounded-2xl p-6 sm:p-8 border border-border/50 shadow-sm">
+                  <ManufacturerSelection onArticleSelect={handleArticleSelect} />
                 </div>
               </div>
             )}
@@ -142,6 +161,74 @@ export default function HomePage() {
               <p className="text-xs text-muted-foreground mt-1">Régulièrement mises à jour</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Company Information Section */}
+      <section className="bg-background border-t border-border/50 mt-8">
+        <div className="container mx-auto px-4 py-8">
+          <Collapsible className="max-w-4xl mx-auto">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-6 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-border/50 hover:bg-primary/10 transition-colors group">
+              <h2 className="text-xl font-semibold text-foreground">
+                Achetez vos pièces auto en ligne sur PiecesAutoRenault.tn
+              </h2>
+              <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-all duration-200 group-data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent className="mt-4 p-6 bg-muted/20 rounded-lg border border-border/30">
+              <div className="prose prose-sm max-w-none text-foreground space-y-6">
+                <p className="text-base leading-relaxed">
+                  Créée en 2007, la société Pieces Auto Renault s'est imposée comme l'un des leaders en Afrique dans le domaine de la vente de pièces automobiles. Nous proposons un large choix de pièces de qualité à prix compétitifs, pour répondre aux besoins des particuliers comme des professionnels.
+                </p>
+                
+                <p className="text-base leading-relaxed">
+                  Vous recherchez une pièce pour un modèle de voiture précis ? Besoin de pièces détachées neuves à prix discount ?
+                  Grâce à notre catalogue complet, vous trouverez tout ce qu'il faut pour entretenir ou réparer votre véhicule : freins, filtres, suspension, embrayage, accessoires et bien plus encore.
+                </p>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-primary mb-3">PIÈCES AUTO D'ORIGINE</h3>
+                  <p className="text-base leading-relaxed">
+                    Sur notre site, vous avez accès à des pièces d'origine équipementier pour les marques Renault, Nissan, Dacia, ainsi que de nombreux autres modèles.
+                    Notre moteur de recherche interne vous permet de trouver la pièce exacte dont vous avez besoin :
+                  </p>
+                  <ul className="list-disc list-inside space-y-2 ml-4 text-base">
+                    <li>Recherche par marque, série, modèle et motorisation</li>
+                    <li>Ou simplement par plaque d'immatriculation ou numéro de carte grise</li>
+                  </ul>
+                  <p className="text-base font-medium text-primary">
+                    Trouver la bonne pièce auto n'aura jamais été aussi simple !
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-primary mb-3">QUALITÉ ET SÉCURITÉ À DES PRIX IMBATTABLES</h3>
+                  <p className="text-base leading-relaxed">
+                    Nous travaillons avec les plus grands équipementiers mondiaux tels que Bosch, Valeo, Castrol, SKF, TRW, Luk, Contitech, et bien d'autres.
+                    Toutes nos pièces respectent les standards européens de qualité et sécurité, et vous garantissent fiabilité et durabilité.
+                  </p>
+                  <p className="text-base leading-relaxed">
+                    Grâce à nos partenariats directs, nous vous proposons régulièrement des promotions exclusives, avec des réductions pouvant aller jusqu'à -60% sur le tarif public. Acheter vos pièces sur PiecesAutoRenault.tn, c'est profiter du meilleur rapport qualité / prix.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-primary mb-3">NOS ENGAGEMENTS DEPUIS 2007</h3>
+                  <p className="text-base leading-relaxed">
+                    Notre priorité a toujours été la satisfaction de nos clients.
+                    C'est pourquoi nous vous assurons :
+                  </p>
+                  <ul className="list-disc list-inside space-y-2 ml-4 text-base">
+                    <li>Des milliers de références expédiées le jour même</li>
+                    <li>Une livraison rapide en 24/48h à domicile ou en point relais</li>
+                    <li>La livraison gratuite pour les professionnels de l'automobile</li>
+                    <li>Un paiement sécurisé et flexible (CB, virement, CASH)</li>
+                    <li>Un service client disponible 6j/7, prêt à vous accompagner dans vos choix.</li>
+                  </ul>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </section>
 

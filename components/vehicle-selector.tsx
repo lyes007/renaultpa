@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { SimpleSelect } from "@/components/ui/simple-select"
-import { Loader2, Car, Calendar, Fuel, Cog, CheckCircle } from "lucide-react"
+import { Loader2, Car, Calendar, Fuel, Cog, CheckCircle, Search, Wrench, ChevronLeft } from "lucide-react"
 import { getManufacturers, getModels, getVehicles } from "@/lib/apify-api"
 import { searchCarImages } from "@/lib/wikimedia-api"
 import { getManufacturerLogo } from "@/lib/car-logos"
@@ -11,6 +12,7 @@ import { useCountry } from "@/contexts/country-context"
 import { HierarchicalCategories } from "./hierarchical-categories"
 import { ModernArticlesList } from "./modern-articles-list"
 import { ArticleDetails } from "./article-details"
+import { VinSelector } from "./vin-selector"
 
 interface Manufacturer {
   manufacturerId: number
@@ -37,15 +39,32 @@ interface Vehicle {
   constructionIntervalEnd: string | null
 }
 
+interface VinVehicle {
+  carId: number
+  manuId: number
+  carName: string
+  modelId: number
+  vehicleTypeDescription: string
+}
+
+type SelectionMode = 'choice' | 'manual' | 'vin'
+
 export function VehicleSelector() {
   const { selectedCountry } = useCountry()
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>('choice')
+  
+  // Manual selection states
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([])
   const [models, setModels] = useState<Model[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-
   const [selectedBrand, setSelectedBrand] = useState<Manufacturer | null>(null)
   const [selectedModel, setSelectedModel] = useState<Model | null>(null)
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
+  
+  // VIN selection state
+  const [vinVehicle, setVinVehicle] = useState<VinVehicle | null>(null)
+  
+  // Common states
   const [selectedCategory, setSelectedCategory] = useState<{ id: string; name: string } | null>(null)
   const [selectedArticle, setSelectedArticle] = useState<number | null>(null)
 
@@ -214,6 +233,33 @@ export function VehicleSelector() {
     setSelectedArticle(null)
   }
 
+  const handleVinVehicleSelect = (vehicle: VinVehicle) => {
+    console.log("[VIN] Vehicle selected:", vehicle)
+    setVinVehicle(vehicle)
+    setSelectedCategory(null)
+    setSelectedArticle(null)
+    setCarImage(null)
+    
+    // Load car image for VIN vehicle
+    const brandName = vehicle.carName.split(' ')[0] // Extract brand from carName (e.g., "VW" from "VW TIGUAN...")
+    const modelName = vehicle.carName.split(' ').slice(1, 3).join(' ') // Extract model name
+    loadCarImage(brandName, modelName)
+  }
+
+  const handleModeChange = (mode: SelectionMode) => {
+    setSelectionMode(mode)
+    // Reset all selections when changing mode
+    setSelectedBrand(null)
+    setSelectedModel(null)
+    setSelectedVehicle(null)
+    setVinVehicle(null)
+    setSelectedCategory(null)
+    setSelectedArticle(null)
+    setCarImage(null)
+    setModels([])
+    setVehicles([])
+  }
+
   // Format data for SimpleSelect components
   const formatManufacturersOptions = () => {
     const options = manufacturers.map(manufacturer => ({
@@ -265,53 +311,137 @@ export function VehicleSelector() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-8">
-          {error && (
+          {error && selectionMode === 'manual' && (
             <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg animate-in fade-in duration-300">
               <p className="text-sm text-destructive text-center font-medium">{error}</p>
             </div>
           )}
 
-          {/* Progress Steps */}
-          <div className="flex items-center justify-center space-x-2 sm:space-x-4 mb-8 px-4">
-            <div className={`flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-2 transition-all duration-500 ${selectedBrand ? 'text-primary' : 'text-muted-foreground'}`}>
-              <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
-                selectedBrand ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground'
-              }`}>
-                {selectedBrand ? <CheckCircle className="h-4 w-4" /> : '1'}
+          {/* Selection Mode Choice */}
+          {selectionMode === 'choice' && (
+            <div className="space-y-6 sm:space-y-8 text-center animate-in fade-in duration-700">
+              <div className="space-y-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary/10 to-primary/20 rounded-2xl mb-4">
+                  <Cog className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Comment identifier votre véhicule ?</h3>
+                <p className="text-base text-muted-foreground max-w-md mx-auto">Choisissez la méthode qui vous convient le mieux</p>
               </div>
-              <span className="text-xs sm:text-sm font-medium text-center">Marque</span>
-            </div>
-            <div className={`w-4 sm:w-8 h-1 rounded transition-all duration-500 ${selectedBrand ? 'bg-primary' : 'bg-muted'}`} />
-            <div className={`flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-2 transition-all duration-500 ${selectedModel ? 'text-primary' : 'text-muted-foreground'}`}>
-              <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
-                selectedModel ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground'
-              }`}>
-                {selectedModel ? <CheckCircle className="h-4 w-4" /> : '2'}
+              
+              <div className="grid gap-4 sm:gap-6 max-w-3xl mx-auto">
+                <Card 
+                  className="group border-2 border-border hover:border-primary/50 transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-[1.02] bg-gradient-to-br from-card to-card/50"
+                  onClick={() => handleModeChange('vin')}
+                >
+                  <CardContent className="p-6 sm:p-8">
+                    <div className="flex flex-col sm:flex-row items-center gap-6">
+                      <div className="flex-shrink-0">
+                        <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/30 rounded-2xl flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/40 transition-colors">
+                          <Search className="h-8 w-8 text-primary" />
+                        </div>
+                      </div>
+                      <div className="text-center sm:text-left flex-1">
+                        <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
+                          <h4 className="text-lg sm:text-xl font-bold text-foreground group-hover:text-primary transition-colors">Recherche par VIN</h4>
+                          <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded-full">Recommandé</span>
+                        </div>
+                        <p className="text-sm sm:text-base text-muted-foreground mb-3">Identification automatique et précise avec votre numéro VIN</p>
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-2 text-xs">
+                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">✓ Plus rapide</span>
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">✓ Plus précis</span>
+                          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">✓ Automatique</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card 
+                  className="group border-2 border-border hover:border-primary/50 transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-[1.02] bg-gradient-to-br from-card to-card/50"
+                  onClick={() => handleModeChange('manual')}
+                >
+                  <CardContent className="p-6 sm:p-8">
+                    <div className="flex flex-col sm:flex-row items-center gap-6">
+                      <div className="flex-shrink-0">
+                        <div className="w-16 h-16 bg-gradient-to-br from-secondary/30 to-secondary/40 rounded-2xl flex items-center justify-center group-hover:from-secondary/40 group-hover:to-secondary/50 transition-colors">
+                          <Wrench className="h-8 w-8 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        </div>
+                      </div>
+                      <div className="text-center sm:text-left flex-1">
+                        <h4 className="text-lg sm:text-xl font-bold text-foreground group-hover:text-primary transition-colors mb-2">Sélection manuelle</h4>
+                        <p className="text-sm sm:text-base text-muted-foreground mb-3">Choisissez manuellement marque, modèle et motorisation</p>
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-2 text-xs">
+                          <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full font-medium">Méthode classique</span>
+                          <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full font-medium">Étape par étape</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-              <span className="text-xs sm:text-sm font-medium text-center">Modèle</span>
             </div>
-            <div className={`w-4 sm:w-8 h-1 rounded transition-all duration-500 ${selectedModel ? 'bg-primary' : 'bg-muted'}`} />
-            <div className={`flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-2 transition-all duration-500 ${selectedVehicle ? 'text-primary' : 'text-muted-foreground'}`}>
-              <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
-                selectedVehicle ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground'
-              }`}>
-                {selectedVehicle ? <CheckCircle className="h-4 w-4" /> : '3'}
+          )}
+
+          {/* VIN Selection Mode */}
+          {selectionMode === 'vin' && (
+            <VinSelector 
+              onVehicleSelect={handleVinVehicleSelect}
+              onBack={() => handleModeChange('choice')}
+            />
+          )}
+
+          {/* Manual Selection Mode */}
+          {selectionMode === 'manual' && (
+            <>
+              {/* Progress Steps */}
+              <div className="flex items-center justify-center space-x-2 sm:space-x-4 mb-8 px-4">
+                <div className={`flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-2 transition-all duration-500 ${selectedBrand ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
+                    selectedBrand ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground'
+                  }`}>
+                    {selectedBrand ? <CheckCircle className="h-4 w-4" /> : '1'}
+                  </div>
+                  <span className="text-xs sm:text-sm font-medium text-center">Marque</span>
+                </div>
+                <div className={`w-4 sm:w-8 h-1 rounded transition-all duration-500 ${selectedBrand ? 'bg-primary' : 'bg-muted'}`} />
+                <div className={`flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-2 transition-all duration-500 ${selectedModel ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
+                    selectedModel ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground'
+                  }`}>
+                    {selectedModel ? <CheckCircle className="h-4 w-4" /> : '2'}
+                  </div>
+                  <span className="text-xs sm:text-sm font-medium text-center">Modèle</span>
+                </div>
+                <div className={`w-4 sm:w-8 h-1 rounded transition-all duration-500 ${selectedModel ? 'bg-primary' : 'bg-muted'}`} />
+                <div className={`flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-2 transition-all duration-500 ${selectedVehicle ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
+                    selectedVehicle ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground'
+                  }`}>
+                    {selectedVehicle ? <CheckCircle className="h-4 w-4" /> : '3'}
+                  </div>
+                  <span className="text-xs sm:text-sm font-medium text-center">Motorisation</span>
+                </div>
               </div>
-              <span className="text-xs sm:text-sm font-medium text-center">Motorisation</span>
-            </div>
-          </div>
 
           {/* Selection Form */}
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-3">
             {/* Brand Selection */}
-            <div className="space-y-3 group">
-              <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Car className="h-4 w-4 text-primary" />
-                Marque du véhicule
+            <div className="space-y-4 group">
+              <label className="text-sm font-bold text-foreground flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                  <Car className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <div>Marque du véhicule</div>
+                  <div className="text-xs text-muted-foreground font-normal">Étape 1 sur 3</div>
+                </div>
               </label>
               {loadingManufacturers ? (
-                <div className="h-12 bg-gradient-to-r from-muted/50 to-muted rounded-lg flex items-center justify-center animate-pulse">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <div className="h-14 bg-gradient-to-r from-muted/30 to-muted/60 rounded-xl flex items-center justify-center animate-pulse border-2 border-muted/50">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">Chargement...</span>
+                  </div>
                 </div>
               ) : (
                 <SimpleSelect
@@ -321,20 +451,28 @@ export function VehicleSelector() {
                   placeholder="Choisissez votre marque"
                   searchPlaceholder="Rechercher une marque..."
                   emptyMessage="Aucune marque trouvée"
-                  className="group-hover:shadow-md transition-shadow duration-300"
+                  className="group-hover:shadow-lg transition-all duration-300 h-14"
                 />
               )}
             </div>
 
             {/* Model Selection */}
-            <div className="space-y-3 group">
-              <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-primary" />
-                Modèle et année
+            <div className="space-y-4 group">
+              <label className="text-sm font-bold text-foreground flex items-center gap-3 mb-2">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${selectedBrand ? 'bg-primary/10' : 'bg-muted/50'}`}>
+                  <Calendar className={`h-4 w-4 transition-colors ${selectedBrand ? 'text-primary' : 'text-muted-foreground'}`} />
+                </div>
+                <div>
+                  <div className={selectedBrand ? 'text-foreground' : 'text-muted-foreground'}>Modèle et année</div>
+                  <div className="text-xs text-muted-foreground font-normal">Étape 2 sur 3</div>
+                </div>
               </label>
               {loadingModels ? (
-                <div className="h-12 bg-gradient-to-r from-muted/50 to-muted rounded-lg flex items-center justify-center animate-pulse">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <div className="h-14 bg-gradient-to-r from-muted/30 to-muted/60 rounded-xl flex items-center justify-center animate-pulse border-2 border-muted/50">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">Chargement...</span>
+                  </div>
                 </div>
               ) : (
                 <SimpleSelect
@@ -345,20 +483,28 @@ export function VehicleSelector() {
                   searchPlaceholder="Rechercher un modèle..."
                   emptyMessage="Aucun modèle trouvé"
                   disabled={!selectedBrand || models.length === 0}
-                  className="group-hover:shadow-md transition-shadow duration-300"
+                  className="group-hover:shadow-lg transition-all duration-300 h-14"
                 />
               )}
             </div>
 
             {/* Engine Selection */}
-            <div className="space-y-3 group">
-              <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Fuel className="h-4 w-4 text-primary" />
-                Motorisation
+            <div className="space-y-4 group">
+              <label className="text-sm font-bold text-foreground flex items-center gap-3 mb-2">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${selectedModel ? 'bg-primary/10' : 'bg-muted/50'}`}>
+                  <Fuel className={`h-4 w-4 transition-colors ${selectedModel ? 'text-primary' : 'text-muted-foreground'}`} />
+                </div>
+                <div>
+                  <div className={selectedModel ? 'text-foreground' : 'text-muted-foreground'}>Motorisation</div>
+                  <div className="text-xs text-muted-foreground font-normal">Étape 3 sur 3</div>
+                </div>
               </label>
               {loadingVehicles ? (
-                <div className="h-12 bg-gradient-to-r from-muted/50 to-muted rounded-lg flex items-center justify-center animate-pulse">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <div className="h-14 bg-gradient-to-r from-muted/30 to-muted/60 rounded-xl flex items-center justify-center animate-pulse border-2 border-muted/50">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">Chargement...</span>
+                  </div>
                 </div>
               ) : (
                 <SimpleSelect
@@ -369,14 +515,28 @@ export function VehicleSelector() {
                   searchPlaceholder="Rechercher une motorisation..."
                   emptyMessage="Aucune motorisation trouvée"
                   disabled={!selectedModel || vehicles.length === 0}
-                  className="group-hover:shadow-md transition-shadow duration-300"
+                  className="group-hover:shadow-lg transition-all duration-300 h-14"
                 />
               )}
             </div>
           </div>
 
-          {/* Selected Vehicle Summary */}
-          {selectedVehicle && (
+          {/* Back to selection choice */}
+          <div className="text-center pt-4">
+            <Button 
+              variant="ghost" 
+              onClick={() => handleModeChange('choice')} 
+              className="px-6 py-3 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Changer de méthode de sélection
+            </Button>
+          </div>
+          </>
+          )}
+
+          {/* Selected Vehicle Summary - Works for both manual and VIN selection */}
+          {(selectedVehicle || vinVehicle) && (
             <div className="mt-8 p-6 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-2 border-primary/20 rounded-xl animate-in slide-in-from-bottom duration-500 delay-100">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-primary/20 rounded-full">
@@ -389,38 +549,71 @@ export function VehicleSelector() {
               <div className="grid gap-6 lg:grid-cols-3">
                 {/* Vehicle Information */}
                 <div className="lg:col-span-2 grid gap-3 grid-cols-1 sm:grid-cols-2">
-                  <div className="bg-background/60 p-3 rounded-lg">
-                    <div className="text-xs font-medium text-muted-foreground mb-1">MARQUE & MODÈLE</div>
-                    <div className="font-semibold">{selectedVehicle.manufacturerName} {selectedVehicle.modelName}</div>
-                  </div>
-                  <div className="bg-background/60 p-3 rounded-lg">
-                    <div className="text-xs font-medium text-muted-foreground mb-1">MOTORISATION</div>
-                    <div className="font-semibold">{selectedVehicle.typeEngineName}</div>
-                  </div>
-                  <div className="bg-background/60 p-3 rounded-lg">
-                    <div className="text-xs font-medium text-muted-foreground mb-1">PUISSANCE</div>
-                    <div className="font-semibold">{selectedVehicle.powerPs}ch ({selectedVehicle.powerKw}kW)</div>
-                  </div>
-                  <div className="bg-background/60 p-3 rounded-lg">
-                    <div className="text-xs font-medium text-muted-foreground mb-1">CARBURANT</div>
-                    <div className="font-semibold">{selectedVehicle.fuelType}</div>
-                  </div>
-                  <div className="bg-background/60 p-3 rounded-lg">
-                    <div className="text-xs font-medium text-muted-foreground mb-1">CARROSSERIE</div>
-                    <div className="font-semibold">{selectedVehicle.bodyType}</div>
-                  </div>
-                  <div className="bg-background/60 p-3 rounded-lg">
-                    <div className="text-xs font-medium text-muted-foreground mb-1">PÉRIODE</div>
-                    <div className="font-semibold">
-                      {selectedVehicle.constructionIntervalStart
-                        ? selectedVehicle.constructionIntervalStart.split("-")[0]
-                        : "N/A"}{" "}
-                      -{" "}
-                      {selectedVehicle.constructionIntervalEnd
-                        ? selectedVehicle.constructionIntervalEnd.split("-")[0]
-                        : "présent"}
-                    </div>
-                  </div>
+                  {selectedVehicle ? (
+                    // Manual selection display
+                    <>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">MARQUE & MODÈLE</div>
+                        <div className="font-semibold">{selectedVehicle.manufacturerName} {selectedVehicle.modelName}</div>
+                      </div>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">MOTORISATION</div>
+                        <div className="font-semibold">{selectedVehicle.typeEngineName}</div>
+                      </div>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">PUISSANCE</div>
+                        <div className="font-semibold">{selectedVehicle.powerPs}ch ({selectedVehicle.powerKw}kW)</div>
+                      </div>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">CARBURANT</div>
+                        <div className="font-semibold">{selectedVehicle.fuelType}</div>
+                      </div>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">CARROSSERIE</div>
+                        <div className="font-semibold">{selectedVehicle.bodyType}</div>
+                      </div>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">PÉRIODE</div>
+                        <div className="font-semibold">
+                          {selectedVehicle.constructionIntervalStart
+                            ? selectedVehicle.constructionIntervalStart.split("-")[0]
+                            : "N/A"}{" "}
+                          -{" "}
+                          {selectedVehicle.constructionIntervalEnd
+                            ? selectedVehicle.constructionIntervalEnd.split("-")[0]
+                            : "présent"}
+                        </div>
+                      </div>
+                    </>
+                  ) : vinVehicle ? (
+                    // VIN selection display
+                    <>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">VÉHICULE</div>
+                        <div className="font-semibold">{vinVehicle.carName}</div>
+                      </div>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">MOTORISATION</div>
+                        <div className="font-semibold">{vinVehicle.vehicleTypeDescription}</div>
+                      </div>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">ID TECDOC</div>
+                        <div className="font-semibold">{vinVehicle.carId}</div>
+                      </div>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">FABRICANT ID</div>
+                        <div className="font-semibold">{vinVehicle.manuId}</div>
+                      </div>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">MODÈLE ID</div>
+                        <div className="font-semibold">{vinVehicle.modelId}</div>
+                      </div>
+                      <div className="bg-background/60 p-3 rounded-lg">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">MÉTHODE</div>
+                        <div className="font-semibold text-primary">Identification VIN</div>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
 
                 {/* Car Image */}
@@ -437,7 +630,7 @@ export function VehicleSelector() {
                         <div className="group relative w-full h-full">
                           <img
                             src={carImage.url}
-                            alt={`${selectedVehicle.manufacturerName} ${selectedVehicle.modelName}`}
+                            alt={selectedVehicle ? `${selectedVehicle.manufacturerName} ${selectedVehicle.modelName}` : vinVehicle?.carName || "Vehicle"}
                             className="w-full h-full object-contain rounded-md transition-transform duration-300 group-hover:scale-105"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
@@ -465,7 +658,7 @@ export function VehicleSelector() {
                           <Car className="h-12 w-12 text-muted-foreground/50" />
                           <p className="text-sm text-muted-foreground">Aucune image trouvée</p>
                           <p className="text-xs text-muted-foreground/70">
-                            Pour {selectedVehicle.manufacturerName} {selectedVehicle.modelName}
+                            Pour {selectedVehicle ? `${selectedVehicle.manufacturerName} ${selectedVehicle.modelName}` : vinVehicle?.carName}
                           </p>
                         </div>
                       )}
@@ -479,22 +672,22 @@ export function VehicleSelector() {
       </Card>
 
       {/* Categories Section */}
-      {selectedVehicle && selectedBrand && (
+      {((selectedVehicle && selectedBrand) || vinVehicle) && (
         <div className="animate-in fade-in slide-in-from-bottom duration-700 delay-300">
           <HierarchicalCategories
-            manufacturerId={selectedBrand.manufacturerId}
-            vehicleId={selectedVehicle.vehicleId}
+            manufacturerId={selectedBrand?.manufacturerId || vinVehicle?.manuId || 0}
+            vehicleId={selectedVehicle?.vehicleId || vinVehicle?.carId || 0}
             onCategorySelect={handleCategorySelect}
           />
         </div>
       )}
 
       {/* Articles List */}
-      {selectedCategory && selectedBrand && selectedVehicle && !selectedArticle && (
+      {selectedCategory && ((selectedBrand && selectedVehicle) || vinVehicle) && !selectedArticle && (
         <div className="animate-in fade-in slide-in-from-bottom duration-700 delay-400">
           <ModernArticlesList
-            manufacturerId={selectedBrand.manufacturerId}
-            vehicleId={selectedVehicle.vehicleId}
+            manufacturerId={selectedBrand?.manufacturerId || vinVehicle?.manuId || 0}
+            vehicleId={selectedVehicle?.vehicleId || vinVehicle?.carId || 0}
             productGroupId={selectedCategory.id}
             categoryName={selectedCategory.name}
             onArticleSelect={handleArticleSelect}

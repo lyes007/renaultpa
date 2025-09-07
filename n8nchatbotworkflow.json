@@ -1,0 +1,97 @@
+{
+    "name": "Auto Parts Chatbot",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "chatbot",
+          "options": {}
+        },
+        "id": "1",
+        "name": "Webhook In",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [250, 300],
+        "webhookId": "auto-parts-chatbot"
+      },
+      {
+        "parameters": {
+          "functionCode": "const userMessage = $json[\"message\"];\n\nreturn [{\n  json: {\n    prompt: `You are a helpful auto parts assistant for an e-commerce site. A customer asked: \"${userMessage}\". Answer in a friendly and concise way. If it’s about products, suggest them generally. Do NOT invent prices or stock data, only guide.`\n  }\n}];"
+        },
+        "id": "2",
+        "name": "Prepare Prompt",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [500, 300]
+      },
+      {
+        "parameters": {
+          "url": "https://api.openai.com/v1/chat/completions",
+          "method": "POST",
+          "authentication": "headerAuth",
+          "sendBody": true,
+          "jsonBody": true,
+          "options": {},
+          "bodyParametersJson": "={\n  \"model\": \"gpt-3.5-turbo\",\n  \"messages\": [{\"role\": \"system\", \"content\": \"You are a helpful assistant for an auto parts website.\"}, {\"role\": \"user\", \"content\": $json[\"prompt\"]}],\n  \"temperature\": 0.7\n}"
+        },
+        "id": "3",
+        "name": "Call OpenAI",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [750, 300],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "openai_api_key",
+            "name": "OpenAI API Key"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "functionCode": "const reply = $json[\"choices\"][0][\"message\"][\"content\"];\n\nreturn [{ json: { reply } }];"
+        },
+        "id": "4",
+        "name": "Extract Reply",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [1000, 300]
+      },
+      {
+        "parameters": {
+          "responseMode": "lastNode",
+          "options": {}
+        },
+        "id": "5",
+        "name": "Webhook Response",
+        "type": "n8n-nodes-base.webhookResponse",
+        "typeVersion": 1,
+        "position": [1250, 300]
+      }
+    ],
+    "connections": {
+      "Webhook In": {
+        "main": [
+          [{ "node": "Prepare Prompt", "type": "main", "index": 0 }]
+        ]
+      },
+      "Prepare Prompt": {
+        "main": [
+          [{ "node": "Call OpenAI", "type": "main", "index": 0 }]
+        ]
+      },
+      "Call OpenAI": {
+        "main": [
+          [{ "node": "Extract Reply", "type": "main", "index": 0 }]
+        ]
+      },
+      "Extract Reply": {
+        "main": [
+          [{ "node": "Webhook Response", "type": "main", "index": 0 }]
+        ]
+      }
+    },
+    "active": false,
+    "settings": {},
+    "id": "auto-parts-chatbot"
+  }
+  
