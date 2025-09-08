@@ -1067,3 +1067,45 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Clean mobile animation for service features */
+@keyframes mobileScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.mobile-scroll-animation {
+  animation: mobileScroll 20s linear infinite;
+  width: max-content;
+}
+
+/* Suppliers carousel animation */
+@keyframes suppliersScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-suppliers-scroll {
+  animation: suppliersScroll 30s linear infinite;
+  width: max-content;
+}
+
+
+/* Hide scrollbar for horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+

@@ -94,7 +94,7 @@ export async function getCategories(manufacturerId: number, vehicleId: number, c
 }
 
 export async function getArticles(manufacturerId: number, vehicleId: number, productGroupId: number, countryId: number = 253) {
-  return callApifyActor({
+  const input = {
     selectPageType: "get-article-list",
     typeId: 1,
     langId: 6,
@@ -102,7 +102,11 @@ export async function getArticles(manufacturerId: number, vehicleId: number, pro
     manufacturerId,
     vehicleId,
     productGroupId,
-  })
+  }
+  
+  console.log("[getArticles] API Input:", input)
+  
+  return callApifyActor(input)
 }
 
 export async function getArticleDetails(articleId: number, countryId: number = 253) {
@@ -133,15 +137,27 @@ export async function searchArticlesByNumberAndSupplier(articleNo: string, suppl
   })
 }
 
-// New enhanced search endpoints
-export async function searchArticlesByOEMNumber(oemNo: string, countryId: number = 253) {
+export async function searchArticlesByOemNumber(oemNumber: string, countryId: number = 253) {
+  console.log(`[Apify] Searching OEM: ${oemNumber} with countryId: ${countryId}`)
   return callApifyActor({
     selectPageType: "search-articles-by-article-oem-number",
-    oemNo,
+    articleOemSearchNo: oemNumber,
     langId: 4,
-    countryId,
   })
 }
+
+export async function getVehicleArticles(vehicleId: number, productGroupId: number, countryId: number = 253) {
+  return callApifyActor({
+    selectPageType: "get-article-list",
+    typeId: 1,
+    langId: 6,
+    countryId,
+    manufacturerId: 0, // Will be ignored when vehicleId is provided
+    vehicleId,
+    productGroupId,
+  })
+}
+
 
 export async function postQuickArticleSearch(searchQuery: string, countryId: number = 253) {
   return callApifyActor({

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Loader2, Search, Car, CheckCircle, AlertTriangle, ChevronRight, MoreHorizontal } from "lucide-react"
+import { Loader2, Search, Car, CheckCircle, AlertTriangle, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 import { vinCheck } from "@/lib/apify-api"
 import { useCountry } from "@/contexts/country-context"
 

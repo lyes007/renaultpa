@@ -9,6 +9,7 @@ import { useCart } from "@/hooks/use-cart"
 import { useCountry } from "@/contexts/country-context"
 import { RobustProductImage } from "@/components/ui/robust-product-image"
 import { SupplierLogo } from "@/components/ui/supplier-logo"
+import { buildEquivalentsSectionStream, type EquivalenceResult, type ArticleDetails } from "@/lib/equivalence-service"
 import { 
   ArrowLeft, 
   ShoppingCart, 
@@ -90,6 +91,10 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
   const [activeTab, setActiveTab] = useState("overview")
   const [stockStatus, setStockStatus] = useState<StockStatus | null>(null)
   const [stockLoading, setStockLoading] = useState(false)
+  const [equivalenceData, setEquivalenceData] = useState<EquivalenceResult | null>(null)
+  const [equivalenceLoading, setEquivalenceLoading] = useState(false)
+  const [streamingEquivalents, setStreamingEquivalents] = useState<ArticleDetails[]>([])
+  const [streamingComplete, setStreamingComplete] = useState(false)
   
   const { addItem } = useCart()
   const { selectedCountry } = useCountry()
@@ -253,6 +258,9 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
         if (articleDetails.articleNo) {
           loadStockData(articleDetails.articleNo)
         }
+        
+        // Load equivalence data
+        loadEquivalenceData(articleData)
       } else {
         throw new Error('Article not found')
       }
@@ -284,6 +292,53 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
       console.error('Error loading stock data:', error)
     } finally {
       setStockLoading(false)
+    }
+  }
+
+  const loadEquivalenceData = async (articleData: any) => {
+    try {
+      setEquivalenceLoading(true)
+      setStreamingEquivalents([])
+      setStreamingComplete(false)
+      
+      console.log('[ArticleDetails] Loading equivalence for:', articleData)
+      
+      const stream = buildEquivalentsSectionStream(articleData, {
+        countryId: selectedCountry.id,
+        // vehicleId could be passed if available in context
+      })
+      
+      for await (const result of stream) {
+        if (result.type === 'article') {
+          setStreamingEquivalents(prev => {
+            // Additional safety check for duplicates in UI state
+            const isDuplicate = prev.some(existing => 
+              existing.articleId === result.data.articleId ||
+              (existing.supplierId === result.data.supplierId && existing.articleNo === result.data.articleNo)
+            )
+            
+            if (isDuplicate) {
+              console.log(`[UI] Preventing duplicate: ${result.data.supplierId}-${result.data.articleNo}`)
+              return prev
+            }
+            
+            return [...prev, result.data]
+          })
+        } else if (result.type === 'complete') {
+          setStreamingComplete(true)
+          setEquivalenceData({
+            base: result.data.base || {},
+            oemReferences: [], // We're not showing this anymore
+            equivalents: result.data.equivalents || [],
+            note: result.data.note
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error loading equivalence data:', error)
+      setStreamingComplete(true)
+    } finally {
+      setEquivalenceLoading(false)
     }
   }
 
@@ -751,14 +806,15 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
             </div>
 
       {/* Product Details Tabs */}
-      <div className="mt-8 lg:mt-12">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-12 sm:h-auto">
-            <TabsTrigger value="overview" className="mobile-tabs-trigger text-xs sm:text-sm">Aperçu</TabsTrigger>
-            <TabsTrigger value="specs" className="mobile-tabs-trigger text-xs sm:text-sm">Spécifications</TabsTrigger>
-            <TabsTrigger value="compatibility" className="mobile-tabs-trigger text-xs sm:text-sm">Compatibilité</TabsTrigger>
-            <TabsTrigger value="delivery" className="mobile-tabs-trigger text-xs sm:text-sm">Livraison</TabsTrigger>
-          </TabsList>
+        <div className="mt-8 lg:mt-12">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 h-12 sm:h-auto">
+              <TabsTrigger value="overview" className="mobile-tabs-trigger text-xs sm:text-sm">Aperçu</TabsTrigger>
+              <TabsTrigger value="specs" className="mobile-tabs-trigger text-xs sm:text-sm">Spécifications</TabsTrigger>
+              <TabsTrigger value="equivalence" className="mobile-tabs-trigger text-xs sm:text-sm">Équivalence</TabsTrigger>
+              <TabsTrigger value="compatibility" className="mobile-tabs-trigger text-xs sm:text-sm">Compatibilité</TabsTrigger>
+              <TabsTrigger value="delivery" className="mobile-tabs-trigger text-xs sm:text-sm">Livraison</TabsTrigger>
+            </TabsList>
 
           <TabsContent value="overview" className="mt-6 tab-content-enter">
             <Card className="mobile-detail-section">
@@ -840,10 +896,133 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                   </p>
                 )}
               </CardContent>
-            </Card>
-          </TabsContent>
+              </Card>
+            </TabsContent>
 
-                    <TabsContent value="compatibility" className="mt-6 tab-content-enter">
+            <TabsContent value="equivalence" className="mt-6 tab-content-enter">
+              <Card className="mobile-detail-section">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Pièces équivalentes
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Articles de différents fournisseurs compatibles avec les mêmes références OEM
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {equivalenceLoading && streamingEquivalents.length === 0 ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        <span className="text-sm text-muted-foreground">Recherche des pièces équivalentes...</span>
+                      </div>
+                    </div>
+                  ) : streamingEquivalents.length > 0 || streamingComplete ? (
+                    <div className="space-y-4">
+
+                      {/* Streaming Equivalent Parts */}
+                      {streamingEquivalents.length > 0 && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-medium text-lg">Articles équivalents</h3>
+                            <Badge variant="secondary" className="text-xs">
+                              {streamingEquivalents.length} trouvé{streamingEquivalents.length > 1 ? 's' : ''} {!streamingComplete && '...'}
+                            </Badge>
+                          </div>
+                          
+                          <div className="grid gap-3">
+                            {streamingEquivalents.map((equivalent) => (
+                              <div key={equivalent.articleId} className="flex items-center justify-between p-4 border border-border/50 rounded-lg hover:border-primary/30 transition-colors">
+                                <div className="flex items-center gap-3 flex-1">
+                                  <SupplierLogo 
+                                    supplierName={equivalent.supplierName}
+                                    size="sm"
+                                    showText={false}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-medium text-sm">{equivalent.supplierName}</span>
+                                      <Badge variant="outline" className="text-xs">
+                                        Réf: {equivalent.articleNo}
+                                      </Badge>
+                                    </div>
+                                    {equivalent.eanNumbers && equivalent.eanNumbers.length > 0 && (
+                                      <div className="text-xs text-muted-foreground">
+                                        EAN: {equivalent.eanNumbers[0]}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  {equivalent.media && equivalent.media.length > 0 && (
+                                    <div className="w-12 h-12 bg-muted rounded overflow-hidden">
+                                      <RobustProductImage
+                                        s3ImageLink={equivalent.media[0].s3image}
+                                        imageLink={equivalent.media[0].imageMedia}
+                                        alt={equivalent.supplierName}
+                                        className="w-full h-full object-cover"
+                                        size="sm"
+                                        showDebug={false}
+                                      />
+                                    </div>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => window.open(`/article/${equivalent.articleId}`, '_blank')}
+                                    className="h-8"
+                                  >
+                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                    Voir
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {equivalenceData?.note && (
+                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                              <p className="text-xs text-amber-800">
+                                ⚠️ <strong>Note:</strong> {equivalenceData.note}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* No results message - only show when streaming is complete */}
+                      {streamingComplete && streamingEquivalents.length === 0 && (
+                        <div className="text-center py-8">
+                          <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                          <p className="text-muted-foreground mb-2">Aucune pièce équivalente trouvée</p>
+                          <p className="text-xs text-muted-foreground">
+                            Cette pièce n'a pas d'équivalents disponibles dans notre catalogue.
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="mt-6 p-4 bg-muted/30 rounded-lg">
+                        <p className="text-xs text-muted-foreground">
+                          💡 <strong>Info:</strong> Ces pièces sont des équivalents basés sur les références OEM. 
+                          Elles sont conçues pour s'adapter aux mêmes véhicules que la pièce originale.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                      <p className="text-muted-foreground mb-2">Erreur lors du chargement</p>
+                      <p className="text-xs text-muted-foreground">
+                        Impossible de charger les pièces équivalentes pour le moment.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+                     <TabsContent value="compatibility" className="mt-6 tab-content-enter">
             <div className="space-y-6">
               {/* OEM Numbers Section */}
               <Card className="mobile-detail-section">

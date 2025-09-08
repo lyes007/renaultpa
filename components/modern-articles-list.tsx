@@ -129,7 +129,33 @@ export function ModernArticlesList({
       setLoading(true)
       setError(null)
 
-      const response = await getArticles(manufacturerId, vehicleId, Number.parseInt(productGroupId), selectedCountry.id)
+      console.log(`[ModernArticles] Loading articles with params:`, {
+        manufacturerId,
+        vehicleId,
+        productGroupId: Number.parseInt(productGroupId),
+        countryId: selectedCountry.id,
+        categoryName
+      })
+
+      // Validate parameters
+      if (!manufacturerId || !vehicleId || !productGroupId) {
+        console.error("[ModernArticles] Missing required parameters:", {
+          manufacturerId,
+          vehicleId,
+          productGroupId
+        })
+        setError("Paramètres manquants pour charger les articles")
+        return
+      }
+
+      const parsedProductGroupId = Number.parseInt(productGroupId)
+      if (isNaN(parsedProductGroupId)) {
+        console.error("[ModernArticles] Invalid productGroupId:", productGroupId)
+        setError("ID de catégorie invalide")
+        return
+      }
+
+      const response = await getArticles(manufacturerId, vehicleId, parsedProductGroupId, selectedCountry.id)
 
       if (response.error) {
         setError(response.error)
