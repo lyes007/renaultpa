@@ -182,8 +182,7 @@ export function ModernArticlesList({
   const filteredAndSortedArticles = useMemo(() => {
     let filtered = articles
 
-    // Filter out articles not in CSV (only show articles that exist in stock data)
-    filtered = filtered.filter((article) => stockData.has(article.articleNo))
+    // Show all articles, no longer filtering based on CSV availability
 
     // Apply search filter
     if (searchTerm) {
@@ -245,12 +244,16 @@ export function ModernArticlesList({
 
   const handleAddToCart = (article: Article) => {
     const stockStatus = stockData.get(article.articleNo)
-    const price = stockStatus?.price || 29.99 // Fallback to mock price if no stock data
+    
+    // Only allow adding to cart if article exists in CSV and has a price
+    if (!stockStatus) {
+      return // Don't add articles not in CSV to cart
+    }
     
     addItem({
       articleId: article.articleId,
       name: article.articleProductName,
-      price: price,
+      price: stockStatus.price,
       quantity: 1,
       image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
       supplier: article.supplierName,
@@ -574,8 +577,11 @@ export function ModernArticlesList({
                           <div className="text-xl font-bold text-primary">
                             {(() => {
                               const stockStatus = stockData.get(article.articleNo)
-                              const price = stockStatus?.price || 29.99
-                              return `${price.toFixed(2)} TND`
+                              if (stockStatus) {
+                                return `${stockStatus.price.toFixed(2)} TND`
+                              } else {
+                                return "---"
+                              }
                             })()}
                           </div>
                           <div>
@@ -594,8 +600,12 @@ export function ModernArticlesList({
                               } else if (stockLoading) {
                                 return <Badge variant="secondary" className="text-xs">Vérification...</Badge>
                               } else {
-                                // This should never show since we filter out articles not in CSV
-                                return null
+                                // Article not in CSV - mark as out of stock
+                                return (
+                                  <Badge variant="destructive" className="text-xs">
+                                    Hors stock
+                                  </Badge>
+                                )
                               }
                             })()}
                           </div>
@@ -606,7 +616,7 @@ export function ModernArticlesList({
                       <div className={`grid gap-2 ${viewMode === 'list' ? 'grid-cols-2' : 'grid-cols-1'}`}>
                         {(() => {
                           const stockStatus = stockData.get(article.articleNo)
-                          const isOutOfStock = stockStatus && !stockStatus.inStock
+                          const isOutOfStock = !stockStatus || (stockStatus && !stockStatus.inStock)
                           
                           if (isOutOfStock) {
                             return (

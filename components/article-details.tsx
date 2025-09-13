@@ -345,12 +345,15 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
   const handleAddToCart = () => {
     if (!article) return
     
-    const price = stockStatus?.price || 29.99 // Use real price or fallback to mock
+    // Only allow adding to cart if article exists in CSV and has a price
+    if (!stockStatus?.price) {
+      return // Don't add articles without pricing to cart
+    }
     
     addItem({
       articleId: article.articleId,
       name: article.articleProductName,
-      price: price,
+      price: stockStatus.price,
       quantity: quantity,
              image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
       supplier: article.supplierName,
@@ -433,9 +436,9 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
 
 
 
-  const currentPrice = stockStatus?.price || 29.99
-  const mockOriginalPrice = currentPrice * 1.3 // Create a mock original price for discount display
-  const discount = stockStatus ? Math.round(((mockOriginalPrice - currentPrice) / mockOriginalPrice) * 100) : 0
+  const currentPrice = stockStatus?.price
+  const mockOriginalPrice = currentPrice ? currentPrice * 1.3 : 0 // Create a mock original price for discount display
+  const discount = stockStatus && currentPrice ? Math.round(((mockOriginalPrice - currentPrice) / mockOriginalPrice) * 100) : 0
 
   return (
     <div className="max-w-7xl mx-auto article-details-mobile">
@@ -634,9 +637,9 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
             <div>
                   <div className="flex items-baseline gap-3">
                     <span className="mobile-product-price text-3xl font-bold text-primary price-pulse">
-                      {currentPrice.toFixed(2)} <span className="text-lg">TND</span>
+                      {currentPrice ? `${currentPrice.toFixed(2)} TND` : "---"}
                     </span>
-                    {discount > 0 && (
+                    {discount > 0 && currentPrice && (
                       <span className="text-lg text-muted-foreground line-through">
                         {mockOriginalPrice.toFixed(2)} TND
                       </span>
@@ -656,7 +659,7 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                     ) : (
                       <Badge variant="destructive">
                         <AlertCircle className="h-3 w-3 mr-1" />
-                        Rupture de stock
+                        Sur commande
                       </Badge>
                     )
                   ) : stockLoading ? (
@@ -666,7 +669,7 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                   ) : (
                     <Badge variant="destructive">
                       <AlertCircle className="h-3 w-3 mr-1" />
-                      Article non disponible
+                      Sur commande
                     </Badge>
                   )}
                 </div>
@@ -751,7 +754,7 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                         </div>
                         <div className="text-center">
                           <p className="text-sm text-muted-foreground">
-                            Article en rupture de stock - Contactez-nous pour vérifier la disponibilité
+                            Article sur commande - Contactez-nous pour vérifier la disponibilité
                           </p>
                         </div>
                       </div>
@@ -759,18 +762,29 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                   } else if (isNotInCatalog) {
                     return (
                       <div className="space-y-3">
-                        <Button 
-                          className="w-full h-12 text-base font-semibold"
-                          size="lg"
-                          disabled
-                          variant="outline"
-                        >
-                          <AlertCircle className="h-5 w-5 mr-2" />
-                          Article non disponible
-                        </Button>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button 
+                            onClick={handleCall}
+                            className="h-12 text-base font-semibold hover:bg-blue-50 hover:border-blue-300"
+                            size="lg"
+                            variant="outline"
+                          >
+                            <Phone className="h-5 w-5 mr-2" />
+                            Appeler
+                          </Button>
+                          <Button 
+                            onClick={handleWhatsApp}
+                            className="h-12 text-base font-semibold hover:bg-green-50 hover:border-green-300"
+                            size="lg"
+                            variant="outline"
+                          >
+                            <MessageCircle className="h-5 w-5 mr-2" />
+                            WhatsApp
+                          </Button>
+                        </div>
                         <div className="text-center">
                           <p className="text-sm text-muted-foreground">
-                            Cet article n'est pas disponible dans notre catalogue
+                            Article sur commande - Contactez-nous pour vérifier la disponibilité
                           </p>
                         </div>
                       </div>
@@ -783,7 +797,7 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                         size="lg"
                       >
                         <ShoppingCart className="h-5 w-5 mr-2" />
-                        Ajouter au panier • {(currentPrice * quantity).toFixed(2)} TND
+                        Ajouter au panier • {currentPrice ? `${(currentPrice * quantity).toFixed(2)} TND` : "---"}
                       </Button>
                     )
                   }

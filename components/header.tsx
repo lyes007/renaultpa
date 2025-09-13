@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { useCart } from "@/hooks/use-cart"
-import { searchArticlesByNumber, searchArticlesByOEMNumber, postQuickArticleSearch, searchArticlesByNumberAndSupplierId } from "@/lib/apify-api"
+import { searchArticlesByNumber, searchArticlesByOemNumber, postQuickArticleSearch, searchArticlesByNumberAndSupplierId } from "@/lib/apify-api"
 import { useRouter } from "next/navigation"
 import { useCountry } from "@/contexts/country-context"
 import { CountrySelector } from "@/components/country-selector"
@@ -95,7 +95,7 @@ export function Header() {
       // Run multiple search endpoints in parallel for better results
       const searchPromises = [
         searchArticlesByNumber(searchTerm, selectedCountry.id),
-        searchArticlesByOEMNumber(searchTerm, selectedCountry.id),
+        searchArticlesByOemNumber(searchTerm, selectedCountry.id),
         postQuickArticleSearch(searchTerm, selectedCountry.id)
       ]
       
@@ -111,16 +111,26 @@ export function Header() {
         if (response.status === 'fulfilled' && !response.value.error) {
           console.log(`[ENHANCED-SEARCH] ${searchType} search successful`)
           
-        let searchData: any = null
-          if (Array.isArray(response.value.data) && response.value.data.length > 0) {
-            searchData = response.value.data[0]
-          } else if (response.value.data && typeof response.value.data === 'object') {
-            searchData = response.value.data
-          }
-          
-          if (searchData?.articles && Array.isArray(searchData.articles)) {
-            console.log(`[ENHANCED-SEARCH] Found ${searchData.articles.length} articles from ${searchType}`)
-            allArticles.push(...searchData.articles)
+          if (searchType === 'oem-number') {
+            // OEM search returns articles directly in the data array
+            if (Array.isArray(response.value.data) && response.value.data.length > 0) {
+              const articles = response.value.data.filter(item => item.articleId) // Filter out invalid items
+              console.log(`[ENHANCED-SEARCH] Found ${articles.length} articles from ${searchType}`)
+              allArticles.push(...articles)
+            }
+          } else {
+            // Article number and quick search return nested structure
+            let searchData: any = null
+            if (Array.isArray(response.value.data) && response.value.data.length > 0) {
+              searchData = response.value.data[0]
+            } else if (response.value.data && typeof response.value.data === 'object') {
+              searchData = response.value.data
+            }
+            
+            if (searchData?.articles && Array.isArray(searchData.articles)) {
+              console.log(`[ENHANCED-SEARCH] Found ${searchData.articles.length} articles from ${searchType}`)
+              allArticles.push(...searchData.articles)
+            }
           }
         } else {
           console.log(`[ENHANCED-SEARCH] ${searchType} search failed or returned no results`)
@@ -183,9 +193,8 @@ export function Header() {
         
         setStockData(stockMap)
         
-        // Filter search results to only show articles that exist in CSV
-        const filteredResults = articles.filter(article => stockMap.has(article.articleNo))
-        setSearchResults(filteredResults)
+        // Show all search results, no longer filtering based on CSV availability
+        // The articles are already set in the main search function, no need to filter here
       }
     } catch (error) {
       console.error('Error loading stock data for search results:', error)
@@ -451,8 +460,11 @@ export function Header() {
                             <div className="text-sm font-bold text-primary">
                               {(() => {
                                 const stockStatus = stockData.get(article.articleNo)
-                                const price = stockStatus?.price || 29.99
-                                return `${price.toFixed(2)} TND`
+                                if (stockStatus) {
+                                  return `${stockStatus.price.toFixed(2)} TND`
+                                } else {
+                                  return "---"
+                                }
                               })()}
                             </div>
                             {(() => {
@@ -464,12 +476,16 @@ export function Header() {
                                   </Badge>
                                 ) : (
                                   <Badge variant="destructive" className="text-xs mt-1">
-                                    Rupture
+                                    Sur commande
                                   </Badge>
                                 )
                               } else {
-                                // This should never show since we filter out articles not in CSV
-                                return null
+                                // Article not in CSV - mark as sur commande
+                                return (
+                                  <Badge variant="destructive" className="text-xs mt-1">
+                                    Sur commande
+                                  </Badge>
+                                )
                               }
                             })()}
                           </div>
@@ -804,8 +820,11 @@ export function Header() {
                             <p className="text-xs font-semibold text-primary">
                             {(() => {
                               const stockStatus = stockData.get(article.articleNo)
-                              const price = stockStatus?.price || 29.99
-                              return `${price.toFixed(2)} TND`
+                              if (stockStatus) {
+                                return `${stockStatus.price.toFixed(2)} TND`
+                              } else {
+                                return "---"
+                              }
                             })()}
                           </p>
                           {(() => {
@@ -817,11 +836,16 @@ export function Header() {
                                 </Badge>
                               ) : (
                                   <Badge variant="destructive" className="text-[10px] px-1 py-0">
-                                  Rupture
+                                  Sur commande
                                 </Badge>
                               )
                             } else {
-                              return null
+                              // Article not in CSV - mark as sur commande
+                              return (
+                                <Badge variant="destructive" className="text-[10px] px-1 py-0">
+                                  Sur commande
+                                </Badge>
+                              )
                             }
                           })()}
                         </div>

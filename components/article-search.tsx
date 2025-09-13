@@ -145,10 +145,9 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
         
         setStockData(stockMap)
         
-        // Filter search results to only show articles that exist in CSV
-        const filteredResults = articles.filter(article => stockMap.has(article.articleNo))
-        setSearchResults(filteredResults)
-        setResultCount(filteredResults.length)
+        // Show all search results, no longer filtering based on CSV availability
+        setSearchResults(articles)
+        setResultCount(articles.length)
       }
     } catch (error) {
       console.error('Error loading stock data for search results:', error)
@@ -163,12 +162,16 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
 
   const handleAddToCart = (article: SearchResult) => {
     const stockStatus = stockData.get(article.articleNo)
-    const price = stockStatus?.price || 29.99 // Use real price or fallback
+    
+    // Only allow adding to cart if article exists in CSV and has a price
+    if (!stockStatus) {
+      return // Don't add articles not in CSV to cart
+    }
     
     addItem({
       articleId: article.articleId,
       name: article.articleProductName,
-      price: price,
+      price: stockStatus.price,
       quantity: 1,
       image: article.s3image?.includes('fsn1.your-objectstorage.com') ? article.s3image : '',
       supplier: article.supplierName,
@@ -283,8 +286,11 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
                             <div className="text-lg font-bold text-primary">
                               {(() => {
                                 const stockStatus = stockData.get(article.articleNo)
-                                const price = stockStatus?.price || 29.99
-                                return `${price.toFixed(2)} TND`
+                                if (stockStatus) {
+                                  return `${stockStatus.price.toFixed(2)} TND`
+                                } else {
+                                  return "---"
+                                }
                               })()}
                             </div>
                             {(() => {
@@ -300,15 +306,19 @@ export default function ArticleSearch({ onArticleSelect, initialSearchQuery = ""
                                   </Badge>
                                 )
                               } else {
-                                // This should never show since we filter out articles not in CSV
-                                return null
+                                // Article not in CSV - mark as out of stock
+                                return (
+                                  <Badge variant="destructive" className="text-xs">
+                                    Hors stock
+                                  </Badge>
+                                )
                               }
                             })()}
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             {(() => {
                               const stockStatus = stockData.get(article.articleNo)
-                              const isOutOfStock = stockStatus && !stockStatus.inStock
+                              const isOutOfStock = !stockStatus || (stockStatus && !stockStatus.inStock)
                               
                               if (isOutOfStock) {
                                 return (
