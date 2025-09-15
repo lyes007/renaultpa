@@ -1,11 +1,8 @@
 "use client"
 
-import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
-  Moon, 
-  Sun, 
   Menu, 
   ShoppingCart, 
   Search, 
@@ -18,16 +15,25 @@ import {
   MapPin,
   Zap,
   ChevronDown,
-  Clock
+  Clock,
+  Filter,
+  Battery,
+  Disc,
+  Wind,
+  Car,
+  Gauge,
+  Package
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { useCart } from "@/hooks/use-cart"
-import { searchArticlesByNumber, searchArticlesByOemNumber, postQuickArticleSearch, searchArticlesByNumberAndSupplierId } from "@/lib/apify-api"
+import { searchArticlesByNumberFrench, searchArticlesByOemNumberFrench, postQuickArticleSearchFrench, searchArticlesByNumberAndSupplierId } from "@/lib/apify-api"
 import { useRouter } from "next/navigation"
 import { useCountry } from "@/contexts/country-context"
+import { useVehicle } from "@/contexts/vehicle-context"
 import { CountrySelector } from "@/components/country-selector"
 import { RobustProductImage } from "@/components/ui/robust-product-image"
 import { SupplierLogo } from "@/components/ui/supplier-logo"
+import { AuthButton } from "@/components/auth-button"
 
 interface StockStatus {
   inStock: boolean
@@ -36,10 +42,69 @@ interface StockStatus {
   priceHT: number
 }
 
+interface Category {
+  id: string
+  name: string
+  description: string
+  icon: any
+}
+
+const categories: Category[] = [
+  {
+    id: "filtre",
+    name: "Filtres",
+    description: "Filtres à air, à huile, à carburant et à habitacle",
+    icon: Filter
+  },
+  {
+    id: "battery",
+    name: "Batteries",
+    description: "Batteries automobiles et accessoires",
+    icon: Battery
+  },
+  {
+    id: "brakes",
+    name: "Freinage",
+    description: "Plaquettes, disques et système de freinage",
+    icon: Disc
+  },
+  {
+    id: "air-conditioning",
+    name: "Climatisation",
+    description: "Système de climatisation et ventilation",
+    icon: Wind
+  },
+  {
+    id: "engine",
+    name: "Moteur",
+    description: "Pièces moteur et accessoires",
+    icon: Car
+  },
+  {
+    id: "steering",
+    name: "Direction",
+    description: "Système de direction et guidage",
+    icon: Gauge
+  },
+  {
+    id: "damping",
+    name: "Suspension",
+    description: "Amortisseurs et suspension",
+    icon: Gauge
+  },
+  {
+    id: "interior",
+    name: "Intérieur",
+    description: "Équipement intérieur et confort",
+    icon: Package
+  }
+]
+
 export function Header() {
   const { selectedCountry } = useCountry()
-  const { theme, setTheme } = useTheme()
+  const { setArticleInfo } = useVehicle()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [categoriesDropdownOpen, setCategoriesDropdownOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -94,9 +159,9 @@ export function Header() {
       
       // Run multiple search endpoints in parallel for better results
       const searchPromises = [
-        searchArticlesByNumber(searchTerm, selectedCountry.id),
-        searchArticlesByOemNumber(searchTerm, selectedCountry.id),
-        postQuickArticleSearch(searchTerm, selectedCountry.id)
+        searchArticlesByNumberFrench(searchTerm, selectedCountry.id),
+        searchArticlesByOemNumberFrench(searchTerm, selectedCountry.id),
+        postQuickArticleSearchFrench(searchTerm, selectedCountry.id)
       ]
       
       const responses = await Promise.allSettled(searchPromises)
@@ -254,7 +319,15 @@ export function Header() {
      const handleArticleSelect = (articleId: number) => {
      setShowSearchResults(false)
      setSearchQuery("")
-     router.push(`/article/${articleId}`)
+     
+     // Store article selection in context
+     setArticleInfo({
+       articleId,
+       vehicleName: '',
+       categoryName: 'Recherche'
+     })
+     
+     router.push('/product-details')
    }
 
   const handleViewAllResults = () => {
@@ -263,11 +336,30 @@ export function Header() {
     router.push(`/?search=${encodeURIComponent(searchQuery)}`)
   }
 
-  // Close search results when clicking outside
+  const handleCategorySelect = (category: Category) => {
+    // Store selected category in localStorage for the next page
+    localStorage.setItem('selectedFastCategory', JSON.stringify({
+      id: category.id,
+      name: category.name,
+      description: category.description
+    }))
+    
+    // Navigate to category-vehicle-selection page
+    router.push(`/category-vehicle-selection?category=${category.id}`)
+    setCategoriesDropdownOpen(false)
+  }
+
+  // Close search results and categories dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSearchResults(false)
+      }
+      
+      // Close categories dropdown when clicking outside
+      const categoriesDropdown = document.querySelector('[data-categories-dropdown]')
+      if (categoriesDropdown && !categoriesDropdown.contains(event.target as Node)) {
+        setCategoriesDropdownOpen(false)
       }
     }
 
@@ -574,6 +666,54 @@ export function Header() {
                 <Home className="h-4 w-4 mr-2" />
                 Accueil
               </Button>
+              
+              {/* Categories Dropdown */}
+              <div className="relative" data-categories-dropdown>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCategoriesDropdownOpen(!categoriesDropdownOpen)}
+                  className="h-10 px-4 rounded-lg hover:bg-primary/10 transition-all duration-200"
+                >
+                  <Package className="h-4 w-4 mr-2" />
+                  Catégories
+                  <ChevronDown className={`h-4 w-4 ml-1 transition-transform duration-200 ${categoriesDropdownOpen ? 'rotate-180' : ''}`} />
+                </Button>
+                
+                {/* Categories Dropdown Menu */}
+                {categoriesDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-80 bg-background/95 backdrop-blur-md border-2 border-border/20 rounded-xl shadow-xl z-50">
+                    <div className="p-4">
+                      <h3 className="text-sm font-semibold text-foreground mb-3">Catégories de pièces</h3>
+                      <div className="grid grid-cols-1 gap-2">
+                        {categories.map((category) => {
+                          const IconComponent = category.icon
+                          return (
+                            <button
+                              key={category.id}
+                              onClick={() => handleCategorySelect(category)}
+                              className="flex items-center gap-3 p-3 rounded-lg hover:bg-primary/5 transition-all duration-200 text-left group"
+                            >
+                              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                                <IconComponent className="h-4 w-4 text-primary" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">
+                                  {category.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {category.description}
+                                </div>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
               <Button
                 variant="ghost"
                 size="sm"
@@ -583,6 +723,9 @@ export function Header() {
                 <Settings className="h-4 w-4 mr-2" />
                 Admin
               </Button>
+              
+              {/* Authentication Button */}
+              <AuthButton />
             </div>
 
             {/* Cart Button with Enhanced Design */}
@@ -595,7 +738,8 @@ export function Header() {
               <ShoppingCart className="h-5 w-5" />
               {getTotalItems() > 0 && (
                 <Badge 
-                  className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center text-xs font-bold bg-primary text-primary-foreground border-2 border-background animate-pulse"
+                  className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center text-xs font-bold border-2 border-background animate-pulse"
+                  style={{ backgroundColor: '#BE141E', color: 'white' }}
                 >
                   {getTotalItems()}
                 </Badge>
@@ -603,17 +747,6 @@ export function Header() {
               <span className="sr-only">Panier ({getTotalItems()} articles)</span>
             </Button>
 
-            {/* Theme Toggle with Enhanced Design */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="h-11 w-11 rounded-xl hover:bg-primary/10 transition-all duration-200 hover:scale-105"
-            >
-              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all duration-300 dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all duration-300 dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Basculer le thème</span>
-            </Button>
           </div>
         </div>
 
@@ -651,6 +784,36 @@ export function Header() {
                     <Home className="h-5 w-5 mr-3" />
                     <span className="text-base">Accueil</span>
                   </Button>
+                  
+                  {/* Categories Section */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-foreground px-3">Catégories</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {categories.map((category) => {
+                        const IconComponent = category.icon
+                        return (
+                          <Button
+                            key={category.id}
+                            variant="ghost"
+                            onClick={() => {
+                              handleCategorySelect(category)
+                              setMobileMenuOpen(false)
+                            }}
+                            className="w-full justify-start h-12 rounded-xl hover:bg-primary/10 transition-all p-3"
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <div className="w-6 h-6 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <IconComponent className="h-3 w-3 text-primary" />
+                              </div>
+                              <div className="text-left min-w-0 flex-1">
+                                <div className="text-sm font-medium truncate">{category.name}</div>
+                              </div>
+                            </div>
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  </div>
                   
                   <Button
                     variant="ghost"

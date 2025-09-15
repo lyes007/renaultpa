@@ -695,8 +695,8 @@ export function HierarchicalCategories({ manufacturerId, vehicleId, onCategorySe
                           <Grid3x3 className="h-4 w-4 text-primary" />
                         </div>
                       ) : (
-                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
-                          <Package className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <div className="p-2 bg-green-100 rounded-full">
+                          <Package className="h-4 w-4 text-green-600" />
                         </div>
                       )}
                       
@@ -715,7 +715,7 @@ export function HierarchicalCategories({ manufacturerId, vehicleId, onCategorySe
                       {node.children.length > 0 ? (
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       ) : (
-                        <ArrowRight className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <ArrowRight className="h-4 w-4 text-green-600" />
                       )}
                     </div>
                   </Button>

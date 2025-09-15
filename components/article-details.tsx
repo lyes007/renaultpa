@@ -1119,14 +1119,14 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                       </div>
                       
                       {/* Summary */}
-                      <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-2 text-green-700">
                           <CheckCircle className="h-4 w-4" />
                           <span className="text-sm font-medium">
                             {article.oemNo.length} référence{article.oemNo.length > 1 ? 's' : ''} OE compatible{article.oemNo.length > 1 ? 's' : ''}
                           </span>
                         </div>
-                        <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                        <p className="text-xs text-green-600 mt-1">
                           Cette pièce remplace directement les références d'origine constructeur
                         </p>
             </div>
@@ -1157,22 +1157,22 @@ export function ArticleDetails({ articleId, onBack }: ArticleDetailsProps) {
                 <CardContent>
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
                           <Shield className="h-4 w-4 text-blue-600" />
                           <span className="font-medium text-sm">Garantie de compatibilité</span>
                         </div>
-                        <p className="text-xs text-blue-700 dark:text-blue-400">
+                        <p className="text-xs text-blue-700">
                           Pièce garantie compatible selon les spécifications TecDoc
                         </p>
                       </div>
                       
-                      <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
                           <AlertCircle className="h-4 w-4 text-amber-600" />
                           <span className="font-medium text-sm">Vérification recommandée</span>
                         </div>
-                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                        <p className="text-xs text-amber-700">
                           Vérifiez toujours la compatibilité avec votre véhicule avant commande
                         </p>
                       </div>

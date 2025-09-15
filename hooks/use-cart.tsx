@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useReducer, ReactNode } from "react"
+import { createContext, useContext, useReducer, useEffect, ReactNode } from "react"
 
 export interface CartItem {
   id: number
@@ -26,9 +26,42 @@ type CartAction =
   | { type: "TOGGLE_CART" }
   | { type: "CLOSE_CART" }
 
-const initialState: CartState = {
-  items: [],
-  isOpen: false,
+// Load initial state from localStorage
+const loadCartFromStorage = (): CartState => {
+  if (typeof window === 'undefined') {
+    return { items: [], isOpen: false }
+  }
+  
+  try {
+    const saved = localStorage.getItem('cart-data')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      return {
+        items: parsed.items || [],
+        isOpen: false // Always start with cart closed
+      }
+    }
+  } catch (error) {
+    console.error('Error loading cart from localStorage:', error)
+  }
+  
+  return { items: [], isOpen: false }
+}
+
+const initialState: CartState = loadCartFromStorage()
+
+// Save cart to localStorage
+const saveCartToStorage = (state: CartState) => {
+  if (typeof window === 'undefined') return
+  
+  try {
+    localStorage.setItem('cart-data', JSON.stringify({
+      items: state.items,
+      // Don't save isOpen state
+    }))
+  } catch (error) {
+    console.error('Error saving cart to localStorage:', error)
+  }
 }
 
 function cartReducer(state: CartState, action: CartAction): CartState {
@@ -108,6 +141,11 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, initialState)
+
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    saveCartToStorage(state)
+  }, [state.items]) // Only save when items change, not when isOpen changes
 
   const addItem = (item: Omit<CartItem, "id">) => {
     dispatch({ type: "ADD_ITEM", payload: { ...item, id: Date.now() } })

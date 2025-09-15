@@ -1,0 +1,13 @@
+{
+  "name": "Pièces Auto Renault",
+  "short_name": "PAR",
+  "description": "Trouvez facilement les pièces automobiles Renault, Dacia et Nissan compatibles avec votre véhicule",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#BE141E",
+  "orientation": "portrait-primary",
+  "categories": ["automotive", "shopping", "business"],
+  "lang": "fr",
+  "dir": "ltr"
+}

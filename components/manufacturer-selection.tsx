@@ -1,17 +1,17 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Loader2, Car, ArrowRight, Grid3x3, ChevronLeft, ChevronRight, X, Search } from "lucide-react"
-import { getManufacturers, getModels, getVehicles, getCategories } from "@/lib/apify-api"
+import { getManufacturers, getModels, getVehicles } from "@/lib/apify-api"
 import { getManufacturerLogo } from "@/lib/car-logos"
 import { getModelImageUrl, getModelDisplayName } from "@/lib/model-image-utils"
 import { useCountry } from "@/contexts/country-context"
-import { ModernArticlesList } from "./modern-articles-list"
-import { HierarchicalCategories } from "./hierarchical-categories"
+import { useVehicle } from "@/contexts/vehicle-context"
 
 interface Manufacturer {
   manufacturerId: number
@@ -44,6 +44,8 @@ interface ManufacturerSelectionProps {
 
 export function ManufacturerSelection({ onArticleSelect }: ManufacturerSelectionProps) {
   const { selectedCountry } = useCountry()
+  const { setVehicleInfo } = useVehicle()
+  const router = useRouter()
   
   // Selection states
   const [selectedManufacturer, setSelectedManufacturer] = useState<Manufacturer | null>(null)
@@ -61,10 +63,8 @@ export function ManufacturerSelection({ onArticleSelect }: ManufacturerSelection
   const [loadingVehicles, setLoadingVehicles] = useState(false)
   
   // UI states
-  const [currentStep, setCurrentStep] = useState<'manufacturers' | 'models' | 'categories' | 'articles'>('manufacturers')
+  const [currentStep, setCurrentStep] = useState<'manufacturers' | 'models'>('manufacturers')
   const [error, setError] = useState<string | null>(null)
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
-  const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null)
   const [showVehicleDropdown, setShowVehicleDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   
@@ -219,7 +219,34 @@ export function ManufacturerSelection({ onArticleSelect }: ManufacturerSelection
   const handleVehicleSelect = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle)
     setShowVehicleDropdown(false)
-    setCurrentStep('categories')
+    
+    // Set vehicle info in context
+    if (selectedManufacturer && selectedModel) {
+      setVehicleInfo({
+        selectionMethod: "manual",
+        manufacturerId: selectedManufacturer.manufacturerId,
+        vehicleId: vehicle.vehicleId,
+        manufacturerName: vehicle.manufacturerName,
+        modelName: vehicle.modelName,
+        typeEngineName: vehicle.typeEngineName,
+        powerKw: vehicle.powerKw,
+        powerPs: vehicle.powerPs,
+        fuelType: vehicle.fuelType,
+        bodyType: vehicle.bodyType,
+        constructionIntervalStart: vehicle.constructionIntervalStart,
+        constructionIntervalEnd: vehicle.constructionIntervalEnd,
+      })
+      
+      // Check if we're in category-vehicle-selection context
+      const selectedFastCategory = localStorage.getItem('selectedFastCategory')
+      if (selectedFastCategory) {
+        // Navigate to products page with category context
+        router.push("/products")
+      } else {
+        // Navigate to categories page (original behavior)
+        router.push("/categories")
+      }
+    }
   }
 
   const handleBackToStep = (step: 'manufacturers' | 'models') => {
@@ -228,16 +255,12 @@ export function ManufacturerSelection({ onArticleSelect }: ManufacturerSelection
       setSelectedManufacturer(null)
       setSelectedModel(null)
       setSelectedVehicle(null)
-      setSelectedCategoryId(null)
-      setSelectedCategoryName(null)
       setShowVehicleDropdown(false)
       setSearchQuery('')
       setCurrentPage(1)
     } else if (step === 'models') {
       setSelectedModel(null)
       setSelectedVehicle(null)
-      setSelectedCategoryId(null)
-      setSelectedCategoryName(null)
       setShowVehicleDropdown(false)
     }
   }
@@ -530,75 +553,6 @@ export function ManufacturerSelection({ onArticleSelect }: ManufacturerSelection
   )
 
 
-  const renderCategories = () => (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleBackToStep('models')}
-          className="shrink-0"
-        >
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Retour aux modèles
-        </Button>
-        <div className="text-center flex-1">
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground">
-            Catégories de pièces
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            {selectedManufacturer?.brand} {getModelDisplayName(selectedModel?.modelName || '')} - {selectedVehicle?.typeEngineName}
-          </p>
-        </div>
-      </div>
-
-      {selectedManufacturer && selectedVehicle && (
-        <HierarchicalCategories
-          manufacturerId={selectedManufacturer.manufacturerId}
-          vehicleId={selectedVehicle.vehicleId}
-          onCategorySelect={(categoryId, categoryName) => {
-            setSelectedCategoryId(categoryId)
-            setSelectedCategoryName(categoryName)
-            setCurrentStep('articles')
-          }}
-        />
-      )}
-    </div>
-  )
-
-  const renderArticles = () => (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentStep('categories')}
-          className="shrink-0"
-        >
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Retour aux catégories
-        </Button>
-        <div className="text-center flex-1">
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground">
-            Articles disponibles
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            {selectedManufacturer?.brand} {getModelDisplayName(selectedModel?.modelName || '')} - {selectedVehicle?.typeEngineName}
-          </p>
-        </div>
-      </div>
-
-      {selectedManufacturer && selectedVehicle && selectedCategoryId && (
-        <ModernArticlesList
-          manufacturerId={selectedManufacturer.manufacturerId}
-          vehicleId={selectedVehicle.vehicleId}
-          productGroupId={selectedCategoryId}
-          categoryName={selectedCategoryName || "Articles"}
-          onArticleSelect={onArticleSelect}
-        />
-      )}
-    </div>
-  )
 
   if (error) {
     return (
@@ -615,8 +569,6 @@ export function ManufacturerSelection({ onArticleSelect }: ManufacturerSelection
     <div className="w-full">
       {currentStep === 'manufacturers' && renderManufacturers()}
       {currentStep === 'models' && renderModels()}
-      {currentStep === 'categories' && renderCategories()}
-      {currentStep === 'articles' && renderArticles()}
     </div>
   )
 }

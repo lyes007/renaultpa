@@ -127,6 +127,15 @@ export async function searchArticlesByNumber(articleNo: string, countryId: numbe
   })
 }
 
+export async function searchArticlesByNumberFrench(articleNo: string, countryId: number = 253) {
+  return callApifyActor({
+    selectPageType: "search-articles-by-article-number",
+    articleNo,
+    langId: 6, // Use langId 6 for French language
+    countryId,
+  })
+}
+
 export async function searchArticlesByNumberAndSupplier(articleNo: string, supplierId: number, countryId: number = 253) {
   return callApifyActor({
     selectPageType: "search-articles-by-article-number-and-supplier",
@@ -143,6 +152,15 @@ export async function searchArticlesByOemNumber(oemNumber: string, countryId: nu
     selectPageType: "search-articles-by-article-oem-number",
     articleOemSearchNo: oemNumber,
     langId: 4,
+  })
+}
+
+export async function searchArticlesByOemNumberFrench(oemNumber: string, countryId: number = 253) {
+  console.log(`[Apify] Searching OEM French: ${oemNumber} with countryId: ${countryId}`)
+  return callApifyActor({
+    selectPageType: "search-articles-by-article-oem-number",
+    articleOemSearchNo: oemNumber,
+    langId: 6, // Use langId 6 for French language
   })
 }
 
@@ -164,6 +182,15 @@ export async function postQuickArticleSearch(searchQuery: string, countryId: num
     selectPageType: "post-quick-article-search",
     searchQuery,
     langId: 4,
+    countryId,
+  })
+}
+
+export async function postQuickArticleSearchFrench(searchQuery: string, countryId: number = 253) {
+  return callApifyActor({
+    selectPageType: "post-quick-article-search",
+    searchQuery,
+    langId: 6, // Use langId 6 for French language
     countryId,
   })
 }

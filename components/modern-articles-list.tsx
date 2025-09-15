@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -84,7 +83,6 @@ export function ModernArticlesList({
   const [stockData, setStockData] = useState<Map<string, StockStatus>>(new Map())
   const [stockLoading, setStockLoading] = useState(false)
   const { addItem } = useCart()
-  const router = useRouter()
 
   useEffect(() => {
     loadArticles()
@@ -262,7 +260,7 @@ export function ModernArticlesList({
   }
 
   const handleViewDetails = (articleId: number) => {
-    router.push(`/article/${articleId}`)
+    onArticleSelect(articleId)
   }
 
   const clearFilters = () => {
