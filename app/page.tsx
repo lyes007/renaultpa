@@ -277,7 +277,7 @@ export default function HomePage() {
           <img
             src="/wheel.png"
             alt="Performance Wheel"
-            className="h-48 md:h-64 lg:h-80 xl:h-96 w-auto object-contain opacity-80 wheel-scroll-rotate"
+            className="h-64 md:h-80 lg:h-96 xl:h-[28rem] w-auto object-contain opacity-80 wheel-scroll-rotate"
             style={{
               transform: `translateX(50%) rotate(${wheelRotation}deg)`,
               transition: "transform 0.1s ease-out",
