@@ -13,16 +13,10 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async session({ session, user }) {
-      if (session.user) {
+      if (session.user && user) {
         session.user.id = user.id
       }
       return session
-    },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-      }
-      return token
     },
   },
   pages: {
@@ -31,5 +25,26 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'database',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    },
+  },
+  events: {
+    async signOut({ session, token }) {
+      console.log('User signed out:', session?.user?.email || token?.email)
+    },
+    async signIn({ user, account, profile }) {
+      console.log('User signed in:', user.email)
+    },
+  },
+  debug: process.env.NODE_ENV === 'development',
 }

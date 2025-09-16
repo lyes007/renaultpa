@@ -59,14 +59,47 @@ export function AuthButton() {
       <Button
         variant="outline"
         size="sm"
-        onClick={() => {
+        onClick={async () => {
           console.log("Simple logout clicked")
-          signOut({ callbackUrl: "/" })
+          try {
+            await signOut({ 
+              callbackUrl: "/",
+              redirect: true 
+            })
+            console.log("SignOut completed successfully")
+          } catch (error) {
+            console.error("SignOut error:", error)
+          }
         }}
         className="h-10 px-3 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-all duration-200"
       >
         <LogOut className="h-4 w-4 mr-2" />
         <span className="hidden sm:inline">Déconnexion</span>
+      </Button>
+
+      {/* Debug: Manual Logout Button (temporary) */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={async () => {
+          console.log("Manual logout clicked")
+          try {
+            const response = await fetch('/api/manual-logout', { method: 'POST' })
+            const result = await response.json()
+            console.log("Manual logout result:", result)
+            
+            if (response.ok) {
+              // Force page reload to clear client-side session
+              window.location.href = '/'
+            }
+          } catch (error) {
+            console.error("Manual logout error:", error)
+          }
+        }}
+        className="h-10 px-2 text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300 transition-all duration-200"
+        title="Debug: Manual logout"
+      >
+        <LogOut className="h-4 w-4" />
       </Button>
 
       {/* Quick Access Buttons */}
