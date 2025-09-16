@@ -183,9 +183,9 @@ export function Header() {
               console.log(`[ENHANCED-SEARCH] Found ${articles.length} articles from ${searchType}`)
               allArticles.push(...articles)
             }
-          } else {
+      } else {
             // Article number and quick search return nested structure
-            let searchData: any = null
+        let searchData: any = null
             if (Array.isArray(response.value.data) && response.value.data.length > 0) {
               searchData = response.value.data[0]
             } else if (response.value.data && typeof response.value.data === 'object') {
@@ -493,7 +493,7 @@ export function Header() {
 
             {/* Advanced Search Results Dropdown */}
             {showSearchResults && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-background/95 backdrop-blur-md border-2 border-border/20 rounded-xl shadow-xl max-h-96 overflow-y-auto z-50">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-background/95 backdrop-blur-md border-2 border-border/20 rounded-xl shadow-xl max-h-96 overflow-y-auto z-[9999]">
                 {/* Search Results */}
                 {searchResults.length > 0 && (
                   <div className="p-4">
@@ -564,8 +564,8 @@ export function Header() {
                               if (stockStatus) {
                                 return stockStatus.inStock ? (
                                   <Badge variant="secondary" className="text-xs mt-1 bg-green-100 text-green-800">
-                                    En stock
-                                  </Badge>
+                              En stock
+                            </Badge>
                                 ) : (
                                   <Badge variant="destructive" className="text-xs mt-1">
                                     Sur commande
@@ -635,7 +635,7 @@ export function Header() {
             )}
 
             {showSearchResults && searchResults.length === 0 && searchQuery && !isSearching && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-background/95 backdrop-blur-md border-2 border-border/20 rounded-xl shadow-xl p-6 text-center z-50">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-background/95 backdrop-blur-md border-2 border-border/20 rounded-xl shadow-xl p-6 text-center z-[9999]">
                 <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Search className="h-8 w-8 text-muted-foreground" />
                 </div>
@@ -682,7 +682,7 @@ export function Header() {
                 
                 {/* Categories Dropdown Menu */}
                 {categoriesDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-80 bg-background/95 backdrop-blur-md border-2 border-border/20 rounded-xl shadow-xl z-50">
+                  <div className="absolute top-full left-0 mt-2 w-80 bg-background/95 backdrop-blur-md border-2 border-border/20 rounded-xl shadow-xl z-[9999]">
                     <div className="p-4">
                       <h3 className="text-sm font-semibold text-foreground mb-3">Catégories de pièces</h3>
                       <div className="grid grid-cols-1 gap-2">

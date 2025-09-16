@@ -1,5 +1,5 @@
 // Simple Service Worker - Minimal caching to avoid errors
-const CACHE_NAME = 'pieces-auto-renault-v4'
+const CACHE_NAME = 'pieces-auto-renault-v5'
 
 // Install event - minimal setup
 self.addEventListener('install', (event) => {
@@ -28,10 +28,23 @@ self.addEventListener('activate', (event) => {
   )
 })
 
-// Fetch event - very minimal caching
+// Fetch event - very minimal caching, skip development files
 self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
+
+  // Skip all Next.js development files
+  if (url.pathname.includes('/_next/static/') || 
+      url.pathname.includes('/_next/webpack-hmr') ||
+      url.pathname.includes('webpack.js') ||
+      url.pathname.includes('app-pages-internals.js') ||
+      url.pathname.includes('main-app.js') ||
+      url.pathname.includes('layout.js') ||
+      url.pathname.includes('page.js') ||
+      url.pathname.includes('layout.css') ||
+      url.pathname.includes('page.css')) {
+    return // Let the browser handle these files normally
+  }
 
   // Only handle same-origin GET requests
   if (url.origin !== location.origin || request.method !== 'GET') {

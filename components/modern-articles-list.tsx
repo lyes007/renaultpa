@@ -572,7 +572,7 @@ export function ModernArticlesList({
                       {/* Price and Stock Status */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <div className="text-xl font-bold text-primary">
+                      <div className="text-xl font-bold text-primary">
                             {(() => {
                               const stockStatus = stockData.get(article.articleNo)
                               if (stockStatus) {
@@ -641,14 +641,14 @@ export function ModernArticlesList({
                             )
                           } else {
                             return (
-                              <Button
-                                onClick={() => handleAddToCart(article)}
-                                size="sm"
-                                className="w-full mobile-button transition-all hover:shadow-md min-h-[44px]"
-                              >
-                                <ShoppingCart className="h-4 w-4 mr-2" />
-                                Ajouter au panier
-                              </Button>
+                        <Button
+                          onClick={() => handleAddToCart(article)}
+                          size="sm"
+                          className="w-full mobile-button transition-all hover:shadow-md min-h-[44px]"
+                        >
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          Ajouter au panier
+                        </Button>
                             )
                           }
                         })()}

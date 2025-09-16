@@ -44,13 +44,26 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if ('serviceWorker' in navigator) {
+              // Unregister service worker in development mode
+              if ('serviceWorker' in navigator && window.location.hostname === 'localhost') {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                  for(let registration of registrations) {
+                    registration.unregister();
+                    console.log('SW unregistered for development');
+                  }
+                });
+              }
+              
+              // Only register service worker in production
+              if ('serviceWorker' in navigator && window.location.hostname !== 'localhost') {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js')
                     .then(function(registration) {
-                      console.log('SW registered: ', registration);
-                      // Force update to new service worker
-                      registration.update();
+                      console.log('SW registered successfully');
+                      // Check for updates in background
+                      registration.addEventListener('updatefound', function() {
+                        console.log('SW update found');
+                      });
                     })
                     .catch(function(registrationError) {
                       console.log('SW registration failed: ', registrationError);
