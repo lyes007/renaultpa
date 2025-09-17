@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react"
 import { getManufacturers, getModels, getVehicles, vinCheck } from "@/lib/apify-api"
 import { getManufacturerLogo } from "@/lib/car-logos"
@@ -89,6 +90,7 @@ export function VehicleSelector() {
   const [loadingVehicles, setLoadingVehicles] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
+  const vinResultsRef = useRef<HTMLDivElement>(null)
 
   // Load manufacturers on component mount
   useEffect(() => {
@@ -151,6 +153,27 @@ export function VehicleSelector() {
 
     restoreSelection()
   }, [vehicleInfo, manufacturers, isInitialized])
+
+  // Close VIN results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (vinResultsRef.current && !vinResultsRef.current.contains(event.target as Node)) {
+        if (hasVinSearched && vinVehicles.length > 0) {
+          setHasVinSearched(false)
+          setVinVehicles([])
+          setVinError(null)
+        }
+      }
+    }
+
+    if (hasVinSearched && vinVehicles.length > 0) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [hasVinSearched, vinVehicles.length])
 
   // Update models and vehicles when dependencies change during restoration
   useEffect(() => {
@@ -418,7 +441,7 @@ Veuillez vérifier le VIN ou utiliser la sélection manuelle ci-dessous.`)
     const options = manufacturers.map((manufacturer) => ({
       value: manufacturer.manufacturerId.toString(),
       label: manufacturer.brand,
-      logo: getManufacturerLogo(manufacturer.brand),
+      logo: getManufacturerLogo(manufacturer.brand) || undefined,
     }))
     console.log("Formatted manufacturers options:", options.length, options.slice(0, 5))
     return options
@@ -485,7 +508,7 @@ Veuillez vérifier le VIN ou utiliser la sélection manuelle ci-dessous.`)
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 vehicle-selector-container">
       {/* Vehicle Selection Card */}
       <Card className="border border-primary/10 shadow-lg bg-gradient-to-br from-card to-card/50 backdrop-blur-sm">
         <CardHeader className="pb-2"></CardHeader>
@@ -508,7 +531,7 @@ Veuillez vérifier le VIN ou utiliser la sélection manuelle ci-dessous.`)
 
           {/* VIN Search Section */}
           {!isManualMode && (
-            <div className="space-y-4">
+            <div className="space-y-4 relative">
               {/* VIN Input Section - Integrated */}
               <Card className="border border-primary/10 shadow-md bg-gradient-to-br from-card to-card/95">
                 <CardContent className="p-3 sm:p-4">
@@ -582,34 +605,51 @@ Veuillez vérifier le VIN ou utiliser la sélection manuelle ci-dessous.`)
                 </CardContent>
               </Card>
 
-              {/* VIN Vehicle Results */}
+              {/* VIN Vehicle Results - Dropdown Style */}
               {hasVinSearched && vinVehicles.length > 0 && (
-                <Card className="border-2 border-primary/10 shadow-lg bg-gradient-to-br from-card to-card/95 animate-in slide-in-from-bottom duration-500">
-                  <CardContent className="p-4 sm:p-6">
+                <div 
+                  ref={vinResultsRef}
+                  className="absolute top-full left-0 right-0 vehicle-selector-dropdown mt-2 bg-background border-2 border-primary/20 rounded-lg shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200 max-h-96 overflow-y-auto"
+                >
+                  <div className="p-4 sm:p-6">
                     <div className="space-y-6">
-                      {/* Header */}
-                      <div className="text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-3">
-                          <CheckCircle className="h-6 w-6 text-green-600" />
+                      {/* Header with Close Button */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 text-center">
+                          <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-3">
+                            <CheckCircle className="h-6 w-6 text-green-600" />
+                          </div>
+                          <h3 className="text-lg sm:text-xl font-bold text-primary mb-2">
+                            {vinVehicles.length > 1 ? "Véhicules trouvés" : "Véhicule identifié"}
+                          </h3>
+                          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-sm text-muted-foreground">
+                            <span>
+                              {vinVehicles.length > 1
+                                ? `${vinVehicles.length} véhicules correspondent à ce VIN`
+                                : "Véhicule identifié avec succès"}
+                            </span>
+                            {vinVehicles.length > 1 && (
+                              <>
+                                <span className="hidden sm:inline">•</span>
+                                <span>
+                                  Page {currentVinPage} sur {vinTotalPages}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <h3 className="text-lg sm:text-xl font-bold text-primary mb-2">
-                          {vinVehicles.length > 1 ? "Véhicules trouvés" : "Véhicule identifié"}
-                        </h3>
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-sm text-muted-foreground">
-                          <span>
-                            {vinVehicles.length > 1
-                              ? `${vinVehicles.length} véhicules correspondent à ce VIN`
-                              : "Véhicule identifié avec succès"}
-                          </span>
-                          {vinVehicles.length > 1 && (
-                            <>
-                              <span className="hidden sm:inline">•</span>
-                              <span>
-                                Page {currentVinPage} sur {vinTotalPages}
-                              </span>
-                            </>
-                          )}
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setHasVinSearched(false)
+                            setVinVehicles([])
+                            setVinError(null)
+                          }}
+                          className="shrink-0 ml-4"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
 
                       {/* Vehicle Grid */}
@@ -649,14 +689,68 @@ Veuillez vérifier le VIN ou utiliser la sélection manuelle ci-dessous.`)
 
                                 {/* Select Button */}
                                 <div className="w-full sm:w-auto">
-                                  <Button
-                                    variant="default"
-                                    className="w-full sm:w-auto px-6 py-2 font-semibold shadow-md group-hover:shadow-lg transition-all duration-200"
-                                    size="sm"
+                                  <div
+                                    id={`vin-select-btn-${vehicle.carId}`}
+                                    style={{
+                                      width: "100%",
+                                      padding: "12px 24px",
+                                      fontSize: "16px",
+                                      fontWeight: "700",
+                                      color: "#ffffff !important",
+                                      backgroundColor: "#BE141E !important",
+                                      background: "#BE141E !important",
+                                      border: "none !important",
+                                      borderRadius: "12px",
+                                      cursor: "pointer",
+                                      transition: "all 0.2s ease",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: "8px",
+                                      boxShadow: "4px 4px 8px rgba(0, 0, 0, 0.2)",
+                                      textTransform: "uppercase",
+                                      letterSpacing: "0.5px",
+                                      userSelect: "none",
+                                      opacity: "1 !important"
+                                    }}
+                                    onClick={() => {
+                                      setSelectedVehicle(vehicle)
+                                      setHasVinSearched(false)
+                                      setVinVehicles([])
+                                      setVinError(null)
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = "#A0121A !important";
+                                      e.currentTarget.style.background = "#A0121A !important";
+                                      e.currentTarget.style.color = "#ffffff !important";
+                                      e.currentTarget.style.boxShadow = "6px 6px 12px rgba(0, 0, 0, 0.3)";
+                                      e.currentTarget.style.transform = "translateY(-1px)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = "#BE141E !important";
+                                      e.currentTarget.style.background = "#BE141E !important";
+                                      e.currentTarget.style.color = "#ffffff !important";
+                                      e.currentTarget.style.boxShadow = "4px 4px 8px rgba(0, 0, 0, 0.2)";
+                                      e.currentTarget.style.transform = "translateY(0)";
+                                    }}
+                                    onMouseDown={(e) => {
+                                      e.currentTarget.style.backgroundColor = "#8A0F16 !important";
+                                      e.currentTarget.style.background = "#8A0F16 !important";
+                                      e.currentTarget.style.color = "#ffffff !important";
+                                      e.currentTarget.style.transform = "translateY(0)";
+                                      e.currentTarget.style.boxShadow = "2px 2px 4px rgba(0, 0, 0, 0.2)";
+                                    }}
+                                    onMouseUp={(e) => {
+                                      e.currentTarget.style.backgroundColor = "#A0121A !important";
+                                      e.currentTarget.style.background = "#A0121A !important";
+                                      e.currentTarget.style.color = "#ffffff !important";
+                                      e.currentTarget.style.transform = "translateY(-1px)";
+                                      e.currentTarget.style.boxShadow = "6px 6px 12px rgba(0, 0, 0, 0.3)";
+                                    }}
                                   >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    <CheckCircle className="h-4 w-4" />
                                     Sélectionner
-                                  </Button>
+                                  </div>
                                 </div>
                               </div>
                             </CardContent>
@@ -710,8 +804,8 @@ Veuillez vérifier le VIN ou utiliser la sélection manuelle ci-dessous.`)
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
             </div>
           )}

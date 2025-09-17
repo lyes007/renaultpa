@@ -148,7 +148,7 @@ export function SimpleSelect({
       </Button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 z-[9999] mt-2 bg-background border-2 border-primary/20 rounded-lg shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200">
+        <div className="absolute top-full left-0 right-0 vehicle-selector-dropdown mt-2 bg-background border-2 border-primary/20 rounded-lg shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200">
           {/* Search Input */}
           <div className="flex items-center border-b border-border/50 px-3 py-3 bg-muted/30">
             <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />

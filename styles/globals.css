@@ -1097,24 +1097,6 @@
   width: max-content;
 }
 
-
-/* Hide scrollbar for horizontal scroll */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-/* Wheel scroll rotation animation */
-.wheel-scroll-rotate {
-  transition: transform 0.1s ease-out;
-  transform-origin: center;
-}
-
-/* Smooth wheel rotation on scroll */
 @keyframes wheel-rotate {
   from {
     transform: translateX(50%) rotate(0deg);
@@ -1126,6 +1108,37 @@
 
 .wheel-scroll-rotate.rotating {
   animation: wheel-rotate 2s linear infinite;
+}
+
+/* Vehicle Selector Z-Index Fix */
+.vehicle-selector-container {
+  position: relative;
+  z-index: 100;
+}
+
+.vehicle-selector-dropdown {
+  z-index: 99999 !important;
+}
+
+/* VIN Selection Button - Maximum Specificity with ID */
+div[id^="vin-select-btn-"] {
+  background-color: #BE141E !important;
+  background: #BE141E !important;
+  color: #ffffff !important;
+  border: none !important;
+  opacity: 1 !important;
+}
+
+div[id^="vin-select-btn-"]:hover {
+  background-color: #A0121A !important;
+  background: #A0121A !important;
+  color: #ffffff !important;
+}
+
+div[id^="vin-select-btn-"]:active {
+  background-color: #8A0F16 !important;
+  background: #8A0F16 !important;
+  color: #ffffff !important;
 }
 
 /* Hero Text Animations */

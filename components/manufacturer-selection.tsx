@@ -413,7 +413,7 @@ export function ManufacturerSelection({ onArticleSelect }: ManufacturerSelection
               {selectedModel?.modelId === model.modelId && showVehicleDropdown && (
                 <div 
                   ref={dropdownRef}
-                  className="absolute top-full left-0 right-0 z-[9999] mt-2 bg-background border border-border rounded-lg shadow-xl max-h-96 overflow-y-auto"
+                  className="absolute top-full left-0 right-0 vehicle-selector-dropdown mt-2 bg-background border border-border rounded-lg shadow-xl max-h-96 overflow-y-auto"
                 >
                   <div className="p-4 border-b border-border">
                     <div className="flex items-center justify-between">

@@ -128,14 +128,14 @@ export default function HomePage() {
         <div className="relative z-10 container mx-auto px-4 h-full min-h-[600px] lg:min-h-[700px]">
           <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 h-full items-center py-8 lg:py-12">
             {/* Left Side - Vehicle Selector - Compact */}
-            <div className="w-full lg:w-1/4 order-2 lg:order-1">
+            <div className="w-full lg:w-1/4 order-1 lg:order-1 relative z-[100]">
               <div className="max-w-xs mx-auto lg:max-w-none">
                 <VehicleSelector />
               </div>
             </div>
 
             {/* Right Side - Hero Content - Takes more space */}
-            <div className="w-full lg:w-3/4 order-1 lg:order-2 text-center lg:text-left">
+            <div className="w-full lg:w-3/4 order-2 lg:order-2 text-center lg:text-left">
               <div className="w-full">
                 {/* Badge */}
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
@@ -259,9 +259,9 @@ export default function HomePage() {
           )}
 
           {!searchQuery && (
-            <div className="space-y-12 mt-12">
+            <div className="space-y-12 mt-12 relative z-10">
               {/* Fast Categories Selection Section */}
-              <div className="bg-gradient-to-br from-background to-muted/10 rounded-2xl p-6 sm:p-8 border border-border/50 shadow-sm">
+              <div className="bg-gradient-to-br from-background to-muted/10 rounded-2xl p-6 sm:p-8 border border-border/50 shadow-sm relative z-10">
                 <FastCategoriesSelection />
               </div>
 
