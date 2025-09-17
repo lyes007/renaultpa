@@ -4,8 +4,17 @@ import type { NextRequest } from 'next/server'
 export function middleware(request: NextRequest) {
   const response = NextResponse.next()
 
-  // Add compression headers for API routes
-  if (request.nextUrl.pathname.startsWith('/api/')) {
+  // Handle auth-related routes with no caching
+  if (request.nextUrl.pathname.startsWith('/api/auth') || 
+      request.nextUrl.pathname.startsWith('/dashboard') ||
+      request.nextUrl.pathname.startsWith('/profile') ||
+      request.nextUrl.pathname.startsWith('/admin')) {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+  }
+  // Add compression headers for other API routes
+  else if (request.nextUrl.pathname.startsWith('/api/')) {
     response.headers.set('Content-Encoding', 'gzip')
     response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=300')
   }

@@ -12,9 +12,13 @@ import { CountryProvider } from "@/contexts/country-context"
 import { VehicleProvider } from "@/contexts/vehicle-context"
 import { NotificationProvider } from "@/contexts/notification-context"
 import { NotificationContainer } from "@/components/notification-container"
-import { AuthSessionProvider } from "@/components/session-provider"
 import { PerformanceMonitor } from "@/components/performance-monitor"
 import { CriticalCSS } from "@/components/critical-css"
+import { Analytics } from "@vercel/analytics/next"
+import AuthProvider from "@/components/auth-provider"
+
+// Force dynamic rendering to prevent caching issues with Auth.js
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: "Pièces Auto Renault - Recherche de Pièces Automobiles",
@@ -77,7 +81,7 @@ export default function RootLayout({
               <body className={GeistSans.className}>
                 <CriticalCSS />
                 <PerformanceMonitor />
-                <AuthSessionProvider>
+                <AuthProvider>
                   <CountryProvider>
                     <VehicleProvider>
                       <CartProvider>
@@ -88,7 +92,8 @@ export default function RootLayout({
                       </CartProvider>
                     </VehicleProvider>
                   </CountryProvider>
-                </AuthSessionProvider>
+                </AuthProvider>
+                <Analytics />
               </body>
     </html>
   )

@@ -5,8 +5,6 @@ export interface ApiResponse<T> {
 
 async function callApifyActor<T>(input: any): Promise<ApiResponse<T>> {
   try {
-    console.log("[v0] Starting Apify actor with input:", input)
-
     const runResponse = await fetch('/api/apify', {
       method: "POST",
       headers: {
@@ -15,8 +13,6 @@ async function callApifyActor<T>(input: any): Promise<ApiResponse<T>> {
       body: JSON.stringify(input),
     })
 
-    console.log("[v0] Run response status:", runResponse.status)
-
     if (!runResponse.ok) {
       const errorText = await runResponse.text()
       console.error("[v0] API Error Response:", errorText)
@@ -24,20 +20,16 @@ async function callApifyActor<T>(input: any): Promise<ApiResponse<T>> {
     }
 
     const responseText = await runResponse.text()
-    console.log("[v0] Raw response text length:", responseText.length)
 
     if (!responseText || responseText.trim() === "") {
-      console.log("[v0] Empty response received")
       return { data: [] as T }
     }
 
     let results
     try {
       results = JSON.parse(responseText)
-      console.log("[v0] Parsed results:", results)
     } catch (parseError) {
       console.error("[v0] JSON Parse Error:", parseError)
-      console.error("[v0] Response text:", responseText)
       throw new Error(`Invalid JSON response: ${parseError}`)
     }
 
@@ -104,7 +96,6 @@ export async function getArticles(manufacturerId: number, vehicleId: number, pro
     productGroupId,
   }
   
-  console.log("[getArticles] API Input:", input)
   
   return callApifyActor(input)
 }
@@ -147,7 +138,6 @@ export async function searchArticlesByNumberAndSupplier(articleNo: string, suppl
 }
 
 export async function searchArticlesByOemNumber(oemNumber: string, countryId: number = 253) {
-  console.log(`[Apify] Searching OEM: ${oemNumber} with countryId: ${countryId}`)
   return callApifyActor({
     selectPageType: "search-articles-by-article-oem-number",
     articleOemSearchNo: oemNumber,
@@ -156,7 +146,6 @@ export async function searchArticlesByOemNumber(oemNumber: string, countryId: nu
 }
 
 export async function searchArticlesByOemNumberFrench(oemNumber: string, countryId: number = 253) {
-  console.log(`[Apify] Searching OEM French: ${oemNumber} with countryId: ${countryId}`)
   return callApifyActor({
     selectPageType: "search-articles-by-article-oem-number",
     articleOemSearchNo: oemNumber,
@@ -207,7 +196,6 @@ export async function searchArticlesByNumberAndSupplierId(articleNo: string, sup
 
 export async function vinCheck(vin: string, countryId: number = 253) {
   try {
-    console.log("[VIN-API] Checking VIN:", vin)
 
     const runResponse = await fetch('/api/apify', {
       method: "POST",
@@ -230,14 +218,12 @@ export async function vinCheck(vin: string, countryId: number = 253) {
     const responseText = await runResponse.text()
 
     if (!responseText || responseText.trim() === "") {
-      console.log("[VIN-API] Empty response received")
       return { data: [] }
     }
 
     let results
     try {
       results = JSON.parse(responseText)
-      console.log("[VIN-API] VIN check completed successfully")
     } catch (parseError) {
       console.error("[VIN-API] JSON Parse Error:", parseError)
       throw new Error(`Invalid JSON response: ${parseError}`)

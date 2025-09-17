@@ -13,7 +13,6 @@ const ArticleDetails = dynamic(() => import("@/components/article-details").then
 const CartDrawer = dynamic(() => import("@/components/cart-drawer").then(mod => ({ default: mod.CartDrawer })), { ssr: false })
 const ManufacturerSelection = dynamic(() => import("@/components/manufacturer-selection").then(mod => ({ default: mod.ManufacturerSelection })), { ssr: false })
 const FastCategoriesSelection = dynamic(() => import("@/components/fast-categories-selection").then(mod => ({ default: mod.FastCategoriesSelection })), { ssr: false })
-const SessionDebug = dynamic(() => import("@/components/session-debug").then(mod => ({ default: mod.SessionDebug })), { ssr: false })
 
 import { SaleSectionSkeleton } from "@/components/ui/loading-skeleton"
 
@@ -88,10 +87,6 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <Header />
 
-      {/* Debug Session Info - Temporary */}
-      <div className="container mx-auto px-4 py-8">
-        <SessionDebug />
-      </div>
 
       {/* Hero Section - Modern Redesign */}
       <section className="relative w-full min-h-[600px] lg:min-h-[700px] overflow-hidden">

@@ -33,7 +33,7 @@ import { useVehicle } from "@/contexts/vehicle-context"
 import { CountrySelector } from "@/components/country-selector"
 import { RobustProductImage } from "@/components/ui/robust-product-image"
 import { SupplierLogo } from "@/components/ui/supplier-logo"
-import { AuthButton } from "@/components/auth-button"
+import GoogleSignInButton from "@/components/google-signin-button"
 
 interface StockStatus {
   inStock: boolean
@@ -724,9 +724,10 @@ export function Header() {
                 Admin
               </Button>
               
-              {/* Authentication Button */}
-              <AuthButton />
             </div>
+
+            {/* Google Sign-in Button */}
+            <GoogleSignInButton />
 
             {/* Cart Button with Enhanced Design */}
             <Button
@@ -785,6 +786,7 @@ export function Header() {
                     <span className="text-base">Accueil</span>
                   </Button>
                   
+                  
                   {/* Categories Section */}
                   <div className="space-y-2">
                     <h3 className="text-sm font-semibold text-foreground px-3">Catégories</h3>
@@ -826,6 +828,14 @@ export function Header() {
                     <Settings className="h-5 w-5 mr-3" />
                     <span className="text-base">Administration</span>
                   </Button>
+                </div>
+
+                {/* Authentication Section */}
+                <div className="space-y-3 pt-4 border-t border-border/30">
+                  <h3 className="text-sm font-semibold text-foreground">Account</h3>
+                  <div className="flex justify-center">
+                    <GoogleSignInButton />
+                  </div>
                 </div>
 
                 {/* Country Selector */}
